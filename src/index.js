@@ -72,7 +72,7 @@ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:en
 html,body{height:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
 :focus-visible{outline:2px solid var(--action);outline-offset:2px}
-.band{background:var(--band);color:var(--band-ink);padding:48px 44px;display:flex;flex-direction:column;justify-content:space-between;gap:32px}
+.band{border-right:1px solid var(--line);background:var(--band);color:var(--band-ink);padding:48px 44px;display:flex;flex-direction:column;justify-content:space-between;gap:32px}
 .brand{font-weight:700;font-size:22px;letter-spacing:-.01em}
 .band h1{font-size:30px;line-height:1.2;font-weight:600;margin:0 0 12px;max-width:16ch;letter-spacing:-.015em}
 .band p{margin:0;color:#9AA6B8;max-width:38ch}
@@ -109,6 +109,10 @@ button{font:inherit;font-weight:600;padding:11px 14px;border-radius:6px;border:1
     <p class="note">Demo with made-up patients and hospitals. No real patient data.</p>
   </form>
 </main>
+<script>
+  // Keep the case link (#AP-…) the browser holds, so sign-in returns to that case
+  if (location.hash) { const n = document.querySelector('input[name="next"]'); n.value = n.value.split("#")[0] + location.hash; }
+</script>
 </body></html>`;
   return withHeaders(new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } }), { "Cache-Control": "no-store" });
 }
