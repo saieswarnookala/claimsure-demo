@@ -117,6 +117,74 @@ button{font:inherit;font-weight:600;padding:11px 14px;border-radius:6px;border:1
   return withHeaders(new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } }), { "Cache-Control": "no-store" });
 }
 
+// ---------- Photo evidence API (works once an R2 bucket is bound as PHOTOS) ----------
+const SLOT_IDS = new Set(["entrance", "register", "casesheet", "bills", "ward", "patient", "papers", "house", "scar"]);
+const CASE_RE = /^AP-\d{4}-\d{3}$/;
+const KEY_RE = /^AP-\d{4}-\d{3}\/[a-z]+\/[\w.-]+\.jpg$/;
+const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
+const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+async function photosApi(request, env, session, url) {
+  const p = url.pathname;
+  if (p === "/api/photos/status") return json({ enabled: !!env.PHOTOS });
+  if (!env.PHOTOS) return json({ error: "Cloud photo storage isn’t connected yet." }, 503);
+
+  if (p === "/api/photos" && request.method === "GET") {
+    const photos = [];
+    let cursor;
+    do {
+      const page = await env.PHOTOS.list({ cursor, include: ["customMetadata"] });
+      for (const o of page.objects) {
+        try { photos.push(JSON.parse(o.customMetadata.meta)); } catch {}
+      }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+    return json({ photos });
+  }
+
+  if (p === "/api/photos" && request.method === "POST") {
+    const form = await request.formData();
+    const file = form.get("file");
+    let meta;
+    try { meta = JSON.parse(form.get("meta")); } catch { return json({ error: "Photo details are missing." }, 400); }
+    if (!(file instanceof File) || file.type !== "image/jpeg" || file.size > 3_000_000) {
+      return json({ error: "Send one JPEG photo under 3 MB." }, 400);
+    }
+    if (!CASE_RE.test(meta.caseId) || !SLOT_IDS.has(meta.slot) || !/^[a-f0-9]{64}$/.test(meta.hash)) {
+      return json({ error: "Photo details are invalid." }, 400);
+    }
+    const id = `${meta.caseId}/${meta.slot}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.jpg`;
+    const record = {
+      id, caseId: meta.caseId, slot: meta.slot, hash: meta.hash,
+      time: String(meta.time || new Date().toISOString()).slice(0, 40),
+      lat: num(meta.lat), lng: num(meta.lng), acc: num(meta.acc),
+      auditor: session.name, username: session.username, size: file.size,
+      uploaded: new Date().toISOString(),
+    };
+    await env.PHOTOS.put(id, await file.arrayBuffer(), {
+      httpMetadata: { contentType: "image/jpeg" },
+      customMetadata: { meta: JSON.stringify(record) },
+    });
+    return json({ photo: record }, 201);
+  }
+
+  const m = p.match(/^\/api\/photos\/file\/(.+)$/);
+  if (m) {
+    const key = decodeURIComponent(m[1]);
+    if (!KEY_RE.test(key)) return json({ error: "Photo not found." }, 404);
+    if (request.method === "GET") {
+      const obj = await env.PHOTOS.get(key);
+      if (!obj) return json({ error: "Photo not found." }, 404);
+      return new Response(obj.body, { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=3600" } });
+    }
+    if (request.method === "DELETE") {
+      await env.PHOTOS.delete(key);
+      return json({ ok: true });
+    }
+  }
+  return json({ error: "Not found." }, 404);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -164,6 +232,11 @@ export default {
     if (path === "/api/me") {
       if (!session) return Response.json({ error: "Not signed in" }, { status: 401, headers: { "Cache-Control": "no-store" } });
       return Response.json(session, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (path.startsWith("/api/photos")) {
+      if (!session) return json({ error: "Not signed in" }, 401);
+      return photosApi(request, env, session, url);
     }
 
     if (!session) {

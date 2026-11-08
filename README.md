@@ -21,6 +21,23 @@ Add or change a user:
 
 Merge the printed entry into the `USERS` secret (Settings → Secrets → Actions), then re-run the deploy.
 
+## Visit photos
+The Photos tab has a checklist of hospital-visit and home-visit shots. Each photo is stamped with time,
+GPS location and auditor, fingerprinted (SHA-256) to catch reuse, and shown in the audit report.
+Patient photos stay locked until consent is recorded.
+
+Storage switches itself:
+- **Now:** photos are saved in the browser (IndexedDB) on the device that took them.
+- **With R2 connected:** photos upload to the bucket and every signed-in user sees them.
+
+### Connect R2 later
+1. Cloudflare dashboard → R2 → create bucket `claimsure-photos` (the API token needs R2 edit permission).
+2. Add to `wrangler.jsonc`:
+
+       "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "claimsure-photos" }]
+
+3. Push. The app detects the bucket (`/api/photos/status`) and starts uploading. No app code changes.
+
 ## Run locally
 Create `.dev.vars` with `USERS=...` and `SESSION_SECRET=...`, then:
 
