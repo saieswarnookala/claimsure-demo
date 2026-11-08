@@ -73,3 +73,15 @@ Manual deploy:
     scripts/add-user.mjs              makes a USERS entry with a hashed password
     wrangler.jsonc                    Cloudflare Workers static-assets config
     .github/workflows/deploy.yml      deploy on push to main
+
+## Importing cases
+
+An audit manager can upload the client's case list as CSV or Excel (**Import cases** above the case list; field auditors don't see it).
+
+1. Pick the client. Each client carries its rule set (for example, Dr NTR Vaidya Seva Trust = NHA default + Andhra Pradesh rules), set by the admin, not by auditors.
+2. Upload the file. Column names don't need to match exactly ("Case No", "DOA", "Beneficiary Name" are recognised); fix any match by hand.
+3. Rows are checked (missing fields, unreadable dates, duplicate claim IDs). Good rows are imported and ranked by risk; bad rows are listed with the reason.
+
+Required columns: claim ID, patient name, age, sex, hospital, package code, admission date, discharge date, amount claimed. A blank template and a sample batch are in the import screen. Full Aadhaar numbers are cut to the last 4 digits on import.
+
+Imported cases are saved in the browser for now (like decisions), until server storage is added.

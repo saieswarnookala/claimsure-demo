@@ -303,7 +303,34 @@ td.bad{color:var(--fail);font-weight:700;background:color-mix(in srgb,var(--fail
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .toast.bad{background:var(--fail);color:#fff}
 dialog#viewer{border:0;border-radius:12px;padding:14px;max-width:min(92vw,980px);background:var(--surface);color:var(--ink)}
-dialog#viewer::backdrop{background:rgb(0 0 0/.6)}
+dialog#viewer::backdrop,dialog#importer::backdrop{background:rgb(0 0 0/.6)}
+dialog#importer{border:0;border-radius:14px;padding:22px 24px;width:min(960px,96vw);max-height:92vh;background:var(--bg);color:var(--ink)}
+#impbody{display:grid;gap:14px}
+#impbody h3{font-size:16px;margin:8px 0 0}
+.imp-h{display:flex;justify-content:space-between;align-items:center}
+.imp-h h2{margin:0;font-size:21px}
+.imp-steps{list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap}
+.imp-steps li{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted);padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.imp-steps li span{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--sunken);font-size:12px;font-weight:700}
+.imp-steps li.on{color:var(--ink);border-color:var(--brand);font-weight:700}.imp-steps li.on span{background:var(--brand);color:var(--brand-ink)}
+.imp-steps li.done span{background:var(--pass);color:#fff}
+.clients{display:grid;gap:8px}
+.drop{display:grid;gap:4px;place-items:center;text-align:center;padding:24px;border:2px dashed var(--line);border-radius:12px;background:var(--surface);cursor:pointer}
+.drop:hover,.drop:focus-within{border-color:var(--brand)}
+.drop input{max-width:100%}.drop span{color:var(--muted);font-size:14px}
+.maptab select{width:100%;min-width:180px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.maptab tr.bad th{color:var(--fail)}
+.req{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 7px;margin-left:4px}
+.imp-warn{margin:0;color:var(--fail);font-weight:700}
+.imp-note{margin:0;padding:10px 12px;border-radius:10px;background:var(--brand-soft);font-size:14px}
+.imp-sum{display:grid;grid-template-columns:auto auto 1fr;gap:10px}
+.imp-sum div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.imp-sum b{display:block;font-size:22px;line-height:1.2}.imp-sum div:last-child b{font-size:16px}
+.imp-sum span{color:var(--muted);font-size:13.5px}.imp-sum .b b{color:var(--fail)}
+.imp-list{margin:0;padding-left:18px;font-size:14px;display:grid;gap:4px}
+.qtools{display:flex;gap:10px;align-items:center;padding:12px 14px 0;flex-wrap:wrap}.qtools:empty{display:none}
+.qtools .hint{font-size:13px}
+.qreason{display:block;font-size:12.5px;color:var(--accent);margin-top:2px}
 dialog#viewer img{max-width:100%;max-height:70vh;display:block;margin:0 auto 10px;border-radius:6px}
 dialog#viewer p{font-size:14px;color:var(--muted);margin:0 0 12px}
 
@@ -317,6 +344,8 @@ dialog#viewer p{font-size:14px;color:var(--muted);margin:0 0 12px}
   .top{grid-template-columns:auto minmax(0,1fr);gap:12px;padding:10px 14px;position:static}
   .me{grid-column:1/-1;justify-content:space-between}
   .demo-note{padding:7px 14px}
+  .imp-sum{grid-template-columns:1fr 1fr}.imp-sum div:last-child{grid-column:1/-1}
+  dialog#importer{padding:16px}
   .app{grid-template-columns:1fr}
   .app.showing .queue{display:none}
   .app:not(.showing) .case{display:none}
@@ -343,7 +372,7 @@ dialog#viewer p{font-size:14px;color:var(--muted);margin:0 0 12px}
 @media print{
   :root:not([data-print]){--bg:#fff;--surface:#fff;--sunken:#EEF0F5;--ink:#141B34;--muted:#4F586C;--line:#CBD2DF;--brand:#3340A0;--brand-soft:#ECEEFA;--accent:#9A6200;--pass:#1A6B43;--warn:#8F5400;--fail:#B02E24;--pending:#5C6478;color-scheme:light}
   html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body::before,.top,.demo-note,.queue,.back,.head,.next,.steps,.choose,.toast,#viewer{display:none!important}
+  body::before,.top,.demo-note,.queue,#importer,.back,.head,.next,.steps,.choose,.toast,#viewer{display:none!important}
   .app,.decide,.case,.wrap{display:block;padding:0;margin:0;max-width:none;min-height:0}
   .report{border:0;border-radius:0;padding:0;font-size:10pt;overflow:visible}
   .report section{margin-top:14pt}
@@ -376,12 +405,14 @@ dialog#viewer p{font-size:14px;color:var(--muted);margin:0 0 12px}
 <div class="demo-note">Demo with made-up patients, hospitals and package rates. No real patient data.</div>
 <div class="app" id="app">
   <aside class="queue" aria-label="Your cases">
+    <div class="qtools" id="qtools"></div>
     <div class="filters" id="filters" role="group" aria-label="Filter cases"></div>
     <ul class="qlist" id="qlist"></ul>
   </aside>
   <main class="case" id="case"></main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="importer" aria-label="Import cases"><div id="impbody"></div></dialog>
 <dialog id="viewer"><img alt=""><p></p><form method="dialog"><button class="btn">Close</button></form></dialog>
 <script>
 /* ---------- Sample data (fictional) ---------- */
@@ -685,10 +716,226 @@ async function readPhoto(c,p,blob){
   delete READING[p.id];renderAll();
 }
 
+/* ---------- Clients and rule sets ---------- */
+/* The rule set belongs to the client. An admin sets it once; auditors never choose it. */
+const RULESETS={
+  nha:{name:"NHA default",desc:"PM-JAY desk audit, field investigation and home visit",questions:[]},
+  ap:{name:"Andhra Pradesh",desc:"Dr NTR Vaidya Seva Trust rules",questions:[
+    {id:"ehr",text:"Health record and ABHA ID existed before the procedure",ask:"Did the hospital have an electronic health record and ABHA ID for this patient before the procedure?",applies:()=>true},
+    {id:"csec",text:"C-section has a recorded medical reason",ask:"Does the case sheet record a medical reason for the C-section, such as fetal distress or failed labour?",applies:c=>/caesar|cesar|lscs|c-?section/i.test(c.pkg.name)||c.pkg.code==="OG012"}]},
+  ts:{name:"Telangana",desc:"Aarogyasri rules, still being researched",questions:[]}
+};
+const CLIENTS=[
+  {id:"ap-trust",name:"Dr NTR Vaidya Seva Trust",scheme:"AB PM-JAY · Dr. NTR Vaidya Seva",state:"Andhra Pradesh",rules:["nha","ap"]},
+  {id:"ts-trust",name:"Aarogyasri Health Care Trust",scheme:"AB PM-JAY · Aarogyasri",state:"Telangana",rules:["nha","ts"]},
+  {id:"nha",name:"National Health Authority",scheme:"AB PM-JAY",state:"All states",rules:["nha"]}
+];
+const clientOf=c=>CLIENTS.find(x=>x.id===(c.client||"ap-trust"))||CLIENTS[0];
+const rulesText=cl=>cl.rules.map(r=>RULESETS[r].name).join(" + ");
+const ruleAnswers=id=>(saved[id]&&saved[id].rules)||{};
+function ruleQuestions(c){return clientOf(c).rules.flatMap(r=>RULESETS[r].questions.filter(q=>q.applies(c)).map(q=>Object.assign({set:r},q)));}
+const missingRules=c=>ruleQuestions(c).filter(q=>!ruleAnswers(c.id)[q.id]);
+
+/* ---------- Imported cases ---------- */
+const IMPORT_KEY="claimsure-imports-v1";
+let IMPORTS={batches:[],rows:[]};
+try{IMPORTS=Object.assign({batches:[],rows:[]},JSON.parse(localStorage.getItem(IMPORT_KEY)||"{}"));}catch(e){}
+function persistImports(){try{localStorage.setItem(IMPORT_KEY,JSON.stringify(IMPORTS));return true;}catch(e){return false;}}
+const PKG_BY_CODE=Object.fromEntries(Object.values(PKG).map(p=>[p.code.toUpperCase(),p]));
+function makeClaim(r){
+  const known=PKG_BY_CODE[String(r.pkgCode).toUpperCase()];
+  const pkg={code:r.pkgCode,name:r.pkgName||(known&&known.name)||r.pkgCode,rate:r.pkgRate||(known&&known.rate)||null,minStay:known?known.minStay:0};
+  return {id:r.id,scenario:"Imported",source:"import",batch:r.batch,client:r.client,reason:r.reason||"",
+    patient:{name:r.name,age:r.age,gender:r.gender,aadhaar:r.aadhaar||""},village:r.village||"",district:r.district||"",
+    hospital:r.hospital,pkg,diagnosis:r.diagnosis||"",doctor:r.doctor||"",claimAmount:r.amount,
+    dates:{admit:r.admit,surgery:r.surgery||"",discharge:r.discharge},files:[],visit:{status:"pending"},
+    hospitalRecord:{name:"",age:"",gender:"",aadhaar:"",diagnosis:"",procedure:"",admit:"",discharge:"",doctor:"",billAmount:r.billAmount==null?"":r.billAmount},
+    patientDocs:{name:"",age:"",gender:"",diagnosis:"",procedure:"",admit:"",discharge:"",doctor:""}};
+}
+CLAIMS.forEach(c=>{if(!c.client)c.client="ap-trust";});
+IMPORTS.rows.forEach(r=>{if(!CLAIMS.some(c=>c.id===r.id))CLAIMS.push(makeClaim(r));});
+const canImport=()=>!ME||ME.role==="Audit manager";
+
+const IMPORT_FIELDS=[
+  {k:"id",label:"Claim ID",req:1,al:["claim id","claim no","claim number","case id","case no","case number","claimid","transaction id","tid"]},
+  {k:"name",label:"Patient name",req:1,al:["patient name","beneficiary name","patient","beneficiary","name"]},
+  {k:"age",label:"Age",req:1,al:["age","patient age"]},
+  {k:"gender",label:"Sex",req:1,al:["sex","gender"]},
+  {k:"aadhaar",label:"Aadhaar (last 4 digits)",al:["aadhaar","aadhar","aadhaar no","aadhaar number","aadhaar last 4","uid"]},
+  {k:"village",label:"Village or town",al:["village","town","city","mandal","address"]},
+  {k:"district",label:"District",al:["district"]},
+  {k:"hospital",label:"Hospital",req:1,al:["hospital","hospital name","network hospital","nwh","provider"]},
+  {k:"pkgCode",label:"Package code",req:1,al:["package code","procedure code","pkg code","hbp code","code"]},
+  {k:"pkgName",label:"Package name",al:["package name","procedure name","procedure","package","treatment"]},
+  {k:"pkgRate",label:"Package rate (₹)",al:["package rate","package amount","package price","hbp rate","rate"]},
+  {k:"diagnosis",label:"Diagnosis",al:["diagnosis","final diagnosis","provisional diagnosis"]},
+  {k:"doctor",label:"Treating doctor",al:["treating doctor","doctor","surgeon","consultant"]},
+  {k:"admit",label:"Admission date",req:1,al:["admission date","date of admission","doa","admit date","admitted on"]},
+  {k:"surgery",label:"Surgery date",al:["surgery date","date of surgery","dos","procedure date"]},
+  {k:"discharge",label:"Discharge date",req:1,al:["discharge date","date of discharge","dod","discharged on"]},
+  {k:"amount",label:"Amount claimed (₹)",req:1,al:["claim amount","amount claimed","claimed amount","claim amt","amount"]},
+  {k:"billAmount",label:"Hospital bill (₹)",al:["bill amount","hospital bill","bill amt","ledger amount"]},
+  {k:"reason",label:"Reason for audit",al:["audit reason","reason for audit","reason","trigger","flag"]}
+];
+const normH=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+function autoMap(headers){
+  const map={},used=new Set(),H=headers.map(normH);
+  IMPORT_FIELDS.forEach(f=>{const i=H.findIndex((h,j)=>!used.has(j)&&f.al.includes(h));if(i>-1){map[f.k]=i;used.add(i);}});
+  IMPORT_FIELDS.forEach(f=>{if(map[f.k]!=null)return;const i=H.findIndex((h,j)=>!used.has(j)&&f.al.some(a=>a.length>3&&h.includes(a)));if(i>-1){map[f.k]=i;used.add(i);}});
+  return map;
+}
+function parseCSV(text){
+  text=String(text).replace(/^\uFEFF/,"");
+  const first=text.split(/\r?\n/)[0]||"",delim=[",",";","\t"].sort((a,b)=>first.split(b).length-first.split(a).length)[0];
+  const rows=[];let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=ch;continue;}
+    if(ch==='"')q=true;else if(ch===delim){row.push(cell);cell="";}
+    else if(ch==="\n"||ch==="\r"){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(cell);rows.push(row);row=[];cell="";}
+    else cell+=ch;}
+  if(cell!==""||row.length){row.push(cell);rows.push(row);}
+  return rows.filter(r=>r.some(x=>String(x).trim()!==""));
+}
+function loadSheetJS(){
+  if(window.XLSX)return Promise.resolve(window.XLSX);
+  return new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload=()=>res(window.XLSX);s.onerror=()=>rej(new Error("Couldn’t load the Excel reader. Check your connection, or save the sheet as CSV."));document.head.appendChild(s);});
+}
+async function readTable(file){
+  if(/\.csv$|\.txt$/i.test(file.name))return parseCSV(await file.text());
+  if(/\.xlsx?$/i.test(file.name)){const X=await loadSheetJS(),wb=X.read(await file.arrayBuffer(),{type:"array",cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];return X.utils.sheet_to_json(ws,{header:1,raw:true,defval:""}).filter(r=>r.some(x=>String(x).trim()!==""));}
+  throw new Error("Choose a CSV or Excel file (.csv, .xlsx or .xls).");
+}
+const MONS={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function anyDate(v){
+  if(v==null||v==="")return "";
+  if(v instanceof Date&&!isNaN(v))return new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  if(typeof v==="number"&&v>20000&&v<80000)return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);
+  const s=String(v).trim().replace(/\s+\d{1,2}:\d{2}.*$/,"");
+  let m=s.match(/^(\d{4})[\/.](\d{1,2})[\/.](\d{1,2})$/);if(m)return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  m=s.match(/^(\d{1,2})[\s\-\/.]([A-Za-z]{3})[A-Za-z]*[\s\-\/.,]+(\d{2,4})$/);if(m&&MONS[m[2].toLowerCase()])return `${m[3].length===2?"20"+m[3]:m[3]}-${String(MONS[m[2].toLowerCase()]).padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  const iso=toISO(s);if(!iso)return "";
+  const [y,mo,d]=iso.split("-").map(Number);return (mo>=1&&mo<=12&&d>=1&&d<=31&&y>1990&&y<2100)?iso:"";
+}
+const money=v=>{if(v===""||v==null)return null;const n=Number(String(v).replace(/[₹,\s]|rs\.?|inr/gi,""));return isFinite(n)?n:NaN;};
+function checkRows(table,map,clientId){
+  const out=[],seen=new Set(),existing=new Set(CLAIMS.map(c=>c.id));let masked=0;
+  table.slice(1).forEach((cells,i)=>{
+    const g=k=>map[k]==null?"":cells[map[k]],str=k=>String(g(k)??"").trim();
+    const r={client:clientId},errs=[],warns=[];
+    r.id=str("id");if(!r.id)errs.push("No claim ID.");else if(seen.has(r.id))errs.push("Claim ID appears twice in the file.");else if(existing.has(r.id))errs.push("This claim is already in your cases.");
+    seen.add(r.id);
+    r.name=str("name");if(!r.name)errs.push("No patient name.");
+    const age=Number(str("age"));if(str("age")==="")errs.push("No age.");else if(!Number.isInteger(age)||age<0||age>120)errs.push(`Age “${str("age")}” isn’t a whole number between 0 and 120.`);else r.age=age;
+    const sx=str("gender");r.gender=/^(m|male)$/i.test(sx)?"M":/^(f|female)$/i.test(sx)?"F":/^(t|o|other|transgender)/i.test(sx)?"O":"";if(!r.gender)errs.push(`Sex “${sx}” should be M, F or Other.`);
+    const ad=str("aadhaar").replace(/\D/g,"");if(ad.length>=12)masked++;r.aadhaar=ad.length>=4?ad.slice(-4):"";
+    ["village","district","hospital","diagnosis","doctor","reason","pkgName"].forEach(k=>r[k]=str(k));
+    if(!r.hospital)errs.push("No hospital.");
+    r.pkgCode=str("pkgCode").toUpperCase();if(!r.pkgCode)errs.push("No package code.");
+    const rate=money(g("pkgRate"));if(Number.isNaN(rate))errs.push(`Package rate “${str("pkgRate")}” isn’t a number.`);else r.pkgRate=rate;
+    if(r.pkgCode&&!r.pkgRate&&!PKG_BY_CODE[r.pkgCode])warns.push(`Package ${r.pkgCode} has no rate, so the billing check is limited.`);
+    [["admit","Admission date",1],["surgery","Surgery date",0],["discharge","Discharge date",1]].forEach(([k,l,req])=>{const raw=g(k),d=anyDate(raw);
+      if(d)r[k]=d;else if(String(raw??"").trim()!=="")errs.push(`${l} “${raw}” isn’t a date we can read.`);else if(req)errs.push(`No ${l.toLowerCase()}.`);});
+    const amt=money(g("amount"));if(amt==null)errs.push("No amount claimed.");else if(Number.isNaN(amt)||amt<=0)errs.push(`Amount “${str("amount")}” isn’t a number.`);else r.amount=amt;
+    const bill=money(g("billAmount"));if(Number.isNaN(bill))warns.push("Hospital bill amount isn’t a number, so it was left out.");else r.billAmount=bill;
+    out.push({line:i+2,r,errs,warns});
+  });
+  return {rows:out,masked};
+}
+function sampleBatchCSV(){
+  const H=["Case No","Beneficiary Name","Age","Gender","Aadhaar No","Village","District","Hospital Name","Procedure Code","Procedure Name","Package Amount","Diagnosis","Treating Doctor","DOA","DOS","DOD","Claim Amount","Bill Amount","Audit Reason"];
+  const R=[
+    ["AP-2611-101","Sravani K","27","F","xxxx-xxxx-3310","Pattikonda","Kurnool","Tungabhadra Care Hospital, Kurnool","OG012","Caesarean section (LSCS)","15000","Previous LSCS, term pregnancy","Dr. M. Swathi","02/11/2026","03/11/2026","06/11/2026","15000","15000","Mandatory C-section audit"],
+    ["AP-2611-102","Mallikarjuna Rao","61","M","","Banaganapalle","Nandyal","Konda Multispeciality, Nandyal","OR021","Total knee replacement","80000","Osteoarthritis, both knees","Dr. S. Reddy","20-Oct-2026","21-Oct-2026","25-Oct-2026","96000","96000","System flag: amount above package"],
+    ["AP-2611-103","Yellamma","52","Female","4567 8901 2345","Alur","Kurnool","Srinivasa Nursing Home, Adoni","SG021","Appendicectomy","22000","Acute appendicitis","Dr. K. Naidu","2026-10-28","2026-10-28","2026-10-27","21500","21500","Random sample"],
+    ["AP-2611-104","Shaik Imran","35","M","2290","Adoni","Kurnool","Srinivasa Nursing Home, Adoni","OP004","Cataract surgery (SICS with IOL)","6000","Mature cataract, right eye","Dr. K. Naidu","05/11/2026","05/11/2026","05/11/2026","6000","5200","Random sample"],
+    ["AP-2611-105","Gowri Shankar","44","M","8812","Kakinada","Kakinada","Godavari Life Hospital, Kakinada","MG014","Pneumonia, medical management","18000","Community-acquired pneumonia","Dr. P. Varma","01/11/2026","","07/11/2026","Rs. 17,400","17400","Random sample"],
+    ["AP-2611-106","Nagamani","31","F","1188","Yemmiganur","Kurnool","Tungabhadra Care Hospital, Kurnool","OG012","Caesarean section (LSCS)","15000","Obstructed labour","Dr. M. Swathi","30/10/2026","30/10/2026","02/11/2026","15000","15000","Mandatory C-section audit"],
+    ["AP-2611-107","Ramanjaneyulu","","M","5521","Dhone","Nandyal","Konda Multispeciality, Nandyal","SG039","Laparoscopic cholecystectomy","40000","Gallstones","Dr. S. Reddy","12/10/2026","13/10/2026","15/10/2026","","38000","Random sample"],
+    ["AP-2611-102","Mallikarjuna Rao","61","M","","Banaganapalle","Nandyal","Konda Multispeciality, Nandyal","OR021","Total knee replacement","80000","Osteoarthritis, both knees","Dr. S. Reddy","20-Oct-2026","21-Oct-2026","25-Oct-2026","96000","96000","System flag: amount above package"]];
+  const q=v=>/[",\n]/.test(v)?`"${v.replace(/"/g,'""')}"`:v;
+  return [H,...R].map(r=>r.map(q).join(",")).join("\r\n");
+}
+function templateCSV(){
+  const ex={id:"AP-2611-201",name:"Patient name",age:"45",gender:"F",aadhaar:"1234",village:"Village",district:"Kurnool",hospital:"Hospital name, town",pkgCode:"SG039",pkgName:"Laparoscopic cholecystectomy",pkgRate:"40000",diagnosis:"Gallstones",doctor:"Dr. Name",admit:"03/10/2026",surgery:"04/10/2026",discharge:"06/10/2026",amount:"38500",billAmount:"38500",reason:"Random sample"};
+  return [IMPORT_FIELDS.map(f=>f.label.replace(/ \(.*\)$/,"")),IMPORT_FIELDS.map(f=>ex[f.k])].map(r=>r.map(v=>/[",]/.test(v)?`"${v}"`:v).join(",")).join("\r\n");
+}
+function download(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/csv"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+
+const IMP={step:1,client:"ap-trust",file:"",table:null,map:{},checked:null};
+function openImporter(){Object.assign(IMP,{step:1,file:"",table:null,map:{},checked:null});renderImporter();document.getElementById("importer").showModal();}
+function previewVal(k,v){
+  if(v instanceof Date)return anyDate(v);
+  if(k==="aadhaar"){const d=String(v??"").replace(/\D/g,"");return d.length>=4?"xxxx xxxx "+d.slice(-4):"";}
+  return v;
+}
+function renderImporter(){
+  const el=document.getElementById("impbody"),cl=CLIENTS.find(x=>x.id===IMP.client);
+  const steps=["Client and file","Match columns","Check and import"];
+  const head=`<div class="imp-h"><h2>Import cases</h2><button class="link" data-imp="close" aria-label="Close">Close</button></div>
+    <ol class="imp-steps">${steps.map((s,i)=>`<li class="${IMP.step===i+1?"on":IMP.step>i+1?"done":""}"><span>${i+1}</span>${s}</li>`).join("")}</ol>`;
+  if(IMP.step===1){
+    el.innerHTML=head+`<h3>Who sent this batch?</h3>
+      <div class="clients">${CLIENTS.map(x=>`<label class="opt"><input type="radio" name="impclient" value="${x.id}" ${x.id===IMP.client?"checked":""}><span><b>${esc(x.name)}</b><small>${esc(x.state)} · Rules: ${esc(rulesText(x))}</small></span></label>`).join("")}</div>
+      <p class="hint">Each client’s rules are set when the client is added. Every case in the batch gets those checks; field auditors can’t change them.</p>
+      <h3>Upload the case list</h3>
+      <label class="drop"><input type="file" id="impfile" accept=".csv,.xlsx,.xls,.txt"><b>Choose a CSV or Excel file</b><span>One row per claim. Column names don’t need to match exactly.</span></label>
+      <div class="row"><button class="btn ghost small" data-imp="template">Download a blank template</button><button class="btn ghost small" data-imp="sample">Try a sample batch (demo)</button></div>
+      ${IMPORTS.batches.length?`<h3>Imported batches</h3><div class="tablewrap"><table><thead><tr><th>File</th><th>Client</th><th>Cases</th><th>Imported</th><th></th></tr></thead><tbody>
+        ${IMPORTS.batches.map(b=>`<tr><td>${esc(b.file)}</td><td>${esc((CLIENTS.find(x=>x.id===b.client)||{}).name||b.client)}</td><td>${IMPORTS.rows.filter(r=>r.batch===b.id).length}</td><td>${day(b.at.slice(0,10))} by ${esc(b.by)}</td><td><button class="link" data-imp="remove" data-batch="${b.id}">Remove</button></td></tr>`).join("")}</tbody></table></div>`:""}`;
+    return;
+  }
+  if(IMP.step===2){
+    const hd=IMP.table[0],ex=IMP.table[1]||[],miss=IMPORT_FIELDS.filter(f=>f.req&&IMP.map[f.k]==null);
+    el.innerHTML=head+`<p class="hint"><b>${esc(IMP.file)}</b>: ${IMP.table.length-1} row${IMP.table.length===2?"":"s"}, ${hd.length} columns. We matched what we could. Fix anything that’s wrong.</p>
+      ${miss.length?`<p class="imp-warn">Still needed: ${miss.map(f=>esc(f.label)).join(", ")}.</p>`:""}
+      <div class="tablewrap"><table class="maptab"><thead><tr><th>ClaimSure field</th><th>Column in your file</th><th>First row</th></tr></thead><tbody>
+      ${IMPORT_FIELDS.map(f=>`<tr class="${f.req&&IMP.map[f.k]==null?"bad":""}"><th scope="row">${esc(f.label)}${f.req?' <span class="req">Required</span>':""}</th>
+        <td><select data-map="${f.k}" aria-label="Column for ${esc(f.label)}"><option value="">Not in file</option>${hd.map((h,i)=>`<option value="${i}" ${IMP.map[f.k]===i?"selected":""}>${esc(h||`Column ${i+1}`)}</option>`).join("")}</select></td>
+        <td class="hint">${IMP.map[f.k]!=null?esc(previewVal(f.k,ex[IMP.map[f.k]])):""}</td></tr>`).join("")}</tbody></table></div>
+      <div class="row"><button class="btn" data-imp="check" ${miss.length?"disabled":""}>Check rows</button><button class="btn ghost" data-imp="back">Back</button></div>`;
+    return;
+  }
+  const ck=IMP.checked,ok=ck.rows.filter(x=>!x.errs.length),bad=ck.rows.filter(x=>x.errs.length),warn=ok.filter(x=>x.warns.length);
+  el.innerHTML=head+`<div class="imp-sum"><div><b>${ok.length}</b><span>ready to import</span></div><div class="${bad.length?"b":""}"><b>${bad.length}</b><span>with problems, skipped</span></div><div><b>${esc(cl.name)}</b><span>Rules: ${esc(rulesText(cl))}</span></div></div>
+    ${ck.masked?`<p class="imp-note">${ck.masked} full Aadhaar number${ck.masked>1?"s were":" was"} found. Only the last 4 digits are kept; the full numbers are not stored.</p>`:""}
+    ${bad.length?`<h3>Rows with problems</h3><p class="hint">Fix these in your file and import it again; rows already imported are skipped automatically.</p><div class="tablewrap"><table><thead><tr><th>Row</th><th>Claim</th><th>Problem</th></tr></thead><tbody>
+      ${bad.map(x=>`<tr><td>${x.line}</td><td>${esc(x.r.id||"—")}${x.r.name?`<br><span class="hint">${esc(x.r.name)}</span>`:""}</td><td>${x.errs.map(esc).join("<br>")}</td></tr>`).join("")}</tbody></table></div>`:""}
+    ${warn.length?`<h3>Imported with a note</h3><ul class="imp-list">${warn.map(x=>`<li><b>${esc(x.r.id)}</b>: ${x.warns.map(esc).join(" ")}</li>`).join("")}</ul>`:""}
+    ${ok.length?`<h3>Ready to import</h3><div class="tablewrap"><table><thead><tr><th>Claim</th><th>Patient</th><th>Package</th><th>Stay</th><th>Claimed</th></tr></thead><tbody>
+      ${ok.map(x=>`<tr><td>${esc(x.r.id)}</td><td>${esc(x.r.name)}, ${x.r.age}${esc(x.r.gender)}</td><td>${esc(x.r.pkgName||x.r.pkgCode)}</td><td>${day(x.r.admit)} to ${day(x.r.discharge)}</td><td>${inr(x.r.amount)}</td></tr>`).join("")}</tbody></table></div>`:""}
+    <div class="row"><button class="btn" data-imp="import" ${ok.length?"":"disabled"}>Import ${ok.length} case${ok.length===1?"":"s"}</button><button class="btn ghost" data-imp="back">Back</button></div>`;
+}
+async function onImportFile(file,name){
+  try{const table=Array.isArray(file)?file:await readTable(file);
+    if(table.length<2){toast("That file has no rows under the header.",true);return;}
+    IMP.table=table;IMP.file=name||file.name;IMP.map=autoMap(table[0]);IMP.step=2;renderImporter();}
+  catch(err){toast(err.message,true);}
+}
+function doImport(){
+  const ok=IMP.checked.rows.filter(x=>!x.errs.length);if(!ok.length)return;
+  const b={id:"B"+Date.now().toString(36),file:IMP.file,client:IMP.client,at:new Date().toISOString(),by:ME?ME.name:"Demo admin"};
+  const rows=ok.map(x=>Object.assign({},x.r,{batch:b.id}));
+  IMPORTS.batches.push(b);IMPORTS.rows.push(...rows);
+  if(!persistImports()){IMPORTS.batches.pop();IMPORTS.rows.splice(-rows.length);toast("This browser’s storage is full. Remove an old batch and try again.",true);return;}
+  rows.forEach(r=>CLAIMS.push(makeClaim(r)));
+  document.getElementById("importer").close();UI.filter="imported";location.hash="";renderAll();
+  toast(`Imported ${rows.length} case${rows.length>1?"s":""}, ranked by risk.`);
+}
+function removeBatch(id){
+  const ids=IMPORTS.rows.filter(r=>r.batch===id).map(r=>r.id);
+  if(!confirm(`Remove ${ids.length} imported case${ids.length===1?"":"s"} and any work saved on them?`))return;
+  IMPORTS.rows=IMPORTS.rows.filter(r=>r.batch!==id);IMPORTS.batches=IMPORTS.batches.filter(b=>b.id!==id);persistImports();
+  ids.forEach(i=>{const k=CLAIMS.findIndex(c=>c.id===i);if(k>-1)CLAIMS.splice(k,1);delete saved[i];});persist();
+  if(!IMPORTS.rows.length&&UI.filter==="imported")UI.filter="all";
+  renderImporter();renderAll();toast("Batch removed.");
+}
+
 /* ---------- Checks ---------- */
 const hashIndex={};
 CLAIMS.forEach(c=>c.files.forEach(f=>{(hashIndex[f.hash]=hashIndex[f.hash]||[]).push(c.id);}));
-const TAB_FOR={"Date logic":"docs","Medical logic":"docs","Identity":"docs","Cross-check":"docs","Billing":"docs","File tampering":"docs","Visual consistency":"docs","Duplicates":"docs","Page reading":"field","Visit evidence":"field","Home visit":"field"};
+const TAB_FOR={"Date logic":"docs","Medical logic":"docs","Identity":"docs","Cross-check":"docs","Billing":"docs","File tampering":"docs","Visual consistency":"docs","Duplicates":"docs","Page reading":"field","Visit evidence":"field","Home visit":"field","State rules":"field"};
 const CRITICAL=["Home visit","Duplicates","File tampering","Identity","Page reading"];
 function runChecks(c){
   const out=[],d=c.dates,hr=c.hospitalRecord,pd=c.patientDocs,v=visitOf(c);
@@ -706,32 +953,36 @@ function runChecks(c){
 
   const idE=[];let is="pass";
   [["name","Name"],["age","Age"],["gender","Sex"]].forEach(([k,l])=>{
-    if(String(hr[k])!==String(c.patient[k])){is="fail";idE.push(`${l}: claim says ${fmtVal(k,c.patient[k])}, hospital record says ${fmtVal(k,hr[k])}.`);}
+    if(hr[k]!==""&&hr[k]!=null&&String(hr[k])!==String(c.patient[k])){is="fail";idE.push(`${l}: claim says ${fmtVal(k,c.patient[k])}, hospital record says ${fmtVal(k,hr[k])}.`);}
     if(pd[k]!==""&&pd[k]!=null&&String(pd[k])!==String(c.patient[k])){is="fail";idE.push(`${l}: claim says ${fmtVal(k,c.patient[k])}, patient’s papers say ${fmtVal(k,pd[k])}.`);}
   });
-  if(String(hr.aadhaar)!==String(c.patient.aadhaar)){is="fail";idE.push(`Masked Aadhaar: claim ends ${c.patient.aadhaar}, hospital record ends ${hr.aadhaar}.`);}
+  if(hr.aadhaar&&c.patient.aadhaar&&String(hr.aadhaar)!==String(c.patient.aadhaar)){is="fail";idE.push(`Masked Aadhaar: claim ends ${c.patient.aadhaar}, hospital record ends ${hr.aadhaar}.`);}
   add("Identity","Same person across claim, hospital and patient papers",is,is==="pass"?"Name, age, sex and masked Aadhaar match.":"Identity details differ between documents.",idE);
 
   const xE=[];let xs="pass";
-  if(!pd.name){xs=v.status==="pending"?"pending":"fail";xE.push("The patient has no discharge papers.");}
+  if(c.source==="import"){xs=v.status!=="done"?"pending":v.papers==="yes"?"pass":v.papers==="no"?"warn":"pending";if(xs==="warn")xE.push("The patient has no discharge papers to compare.");}
+  else if(!pd.name){xs=v.status==="pending"?"pending":"fail";xE.push("The patient has no discharge papers.");}
   else[["diagnosis","Diagnosis"],["procedure","Procedure"],["admit","Admission date"],["discharge","Discharge date"],["doctor","Treating doctor"]].forEach(([k,l])=>{
     if(String(pd[k])!==String(hr[k])){xs="fail";xE.push(`${l}: hospital copy “${fmtVal(k,hr[k])}”, patient copy “${fmtVal(k,pd[k])}”.`);}});
-  add("Cross-check","Hospital copy matches the patient’s copy",xs,xs==="pass"?"Diagnosis, procedure, dates and doctor agree.":xs==="pending"?"Collect the patient’s papers on the home visit.":"Hospital and patient documents disagree.",xE);
+  add("Cross-check","Hospital copy matches the patient’s copy",xs,xs==="pass"?(c.source==="import"?"The patient showed their discharge papers on the home visit.":"Diagnosis, procedure, dates and doctor agree."):xs==="pending"?"Collect the patient’s papers on the home visit.":"Hospital and patient documents disagree.",xE);
 
   const bE=[];let bs="pass";
-  if(c.claimAmount>c.pkg.rate){bs="fail";bE.push(`Claimed ${inr(c.claimAmount)} against a package rate of ${inr(c.pkg.rate)} (${c.pkg.code}).`);}
-  if(Number(hr.billAmount)!==Number(c.claimAmount)){bs="fail";bE.push(`Claim says ${inr(c.claimAmount)}; the hospital ledger says ${inr(hr.billAmount)}.`);}
-  add("Billing","Amount fits the package and the hospital ledger",bs,bs==="pass"?`${inr(c.claimAmount)} is within the package rate of ${inr(c.pkg.rate)}.`:"Billing problem found.",bE);
+  if(!c.pkg.rate){bs="warn";bE.push(`No package rate for ${c.pkg.code}, so the amount can’t be checked against it.`);}
+  else if(c.claimAmount>c.pkg.rate){bs="fail";bE.push(`Claimed ${inr(c.claimAmount)} against a package rate of ${inr(c.pkg.rate)} (${c.pkg.code}).`);}
+  if(hr.billAmount!==""&&hr.billAmount!=null&&Number(hr.billAmount)!==Number(c.claimAmount)){bs="fail";bE.push(`Claim says ${inr(c.claimAmount)}; the hospital ledger says ${inr(hr.billAmount)}.`);}
+  add("Billing","Amount fits the package and the hospital ledger",bs,bs==="pass"?`${inr(c.claimAmount)} is within the package rate of ${inr(c.pkg.rate)}.`:bs==="warn"?"Billing can only be partly checked.":"Billing problem found.",bE);
 
   const fE=[];let fs="pass";
   c.files.forEach(f=>{if(EDITORS.includes(f.producer)){const gap=(f.created&&f.modified)?Math.round(t(f.modified)-t(f.created)):0;
     if(gap>=1){fs="fail";fE.push(`${f.name} was edited with ${f.producer} ${gap} day(s) after it was issued (${day(f.created)} to ${day(f.modified)}).`);}
     else{if(fs!=="fail")fs="warn";fE.push(`${f.name} was last saved with ${f.producer}.`);}}});
-  add("File tampering","Files weren’t edited after they were issued",fs,fs==="pass"?"File details look original.":"Signs of editing in the file details.",fE);
+  if(!c.files.length)fs="pending";
+  add("File tampering","Files weren’t edited after they were issued",fs,fs==="pending"?"No claim documents attached yet.":fs==="pass"?"File details look original.":"Signs of editing in the file details.",fE);
 
   const sE=[];let sts="pass";
   c.files.filter(f=>f.stamp!=null).forEach(f=>{if(f.stamp<0.75){sts="fail";sE.push(`${f.name}: the hospital stamp matches its reference only ${Math.round(f.stamp*100)}%.`);}else if(f.stamp<0.9){if(sts!=="fail")sts="warn";sE.push(`${f.name}: stamp match ${Math.round(f.stamp*100)}%.`);}});
-  add("Visual consistency","Hospital stamp matches its reference",sts,sts==="pass"?"Stamps match the hospital’s reference copy.":"Stamp differs from the hospital’s reference.",sE);
+  if(!c.files.length)sts="pending";
+  add("Visual consistency","Hospital stamp matches its reference",sts,sts==="pending"?"No claim documents attached yet.":sts==="pass"?"Stamps match the hospital’s reference copy.":"Stamp differs from the hospital’s reference.",sE);
 
   const uE=[];let us="pass";
   c.files.forEach(f=>{const others=(hashIndex[f.hash]||[]).filter(x=>x!==c.id);if(others.length){us="fail";uE.push(`${f.name} is identical to a file in ${others.join(", ")}.`);}});
@@ -765,6 +1016,10 @@ function runChecks(c){
     if(v.admitted==="yes"&&v.stay!==""&&v.stay!=null&&n!=null&&Math.abs(Number(v.stay)-n)>1){if(hs!=="fail")hs="warn";hE.push(`The patient recalls ${v.stay} day(s); the record shows ${n} night(s).`);}
     if(v.papers==="no"&&hs==="pass"){hs="warn";hE.push("The patient has no discharge papers.");}
     add("Home visit","Patient confirms the treatment",hs,hs==="pass"?"The patient confirmed the admission and paid nothing.":"The home visit raised problems.",hE);}
+
+  const ra=ruleAnswers(c.id);
+  ruleQuestions(c).forEach(q=>{const a=ra[q.id],nm=RULESETS[q.set].name;
+    add("State rules",q.text,a==="yes"?"pass":a==="no"?"fail":"pending",a==="yes"?`Confirmed on the hospital visit (${nm} rule).`:a==="no"?`Not met. This is a ${nm} scheme rule.`:`${nm} rule. Answer it on the hospital visit.`,a==="no"?[q.ask.replace(/\?$/,"")+": no."]:[]);});
   return out;
 }
 function score(checks){let s=0;checks.forEach(k=>{if(k.status==="fail")s+=CRITICAL.includes(k.group)?50:30;else if(k.status==="warn")s+=12;});return Math.min(100,s);}
@@ -776,7 +1031,7 @@ const stateOf=c=>STATE.get(c.id);
 
 /* ---------- Workflow ---------- */
 const STAGE={visit:"Needs field visit",ready:"Ready to decide",decided:"Decided"};
-function stageOf(c){if(decisionOf(c))return "decided";return (visitOf(c).status!=="done"||missingSlots(c).length)?"visit":"ready";}
+function stageOf(c){if(decisionOf(c))return "decided";return (visitOf(c).status!=="done"||missingSlots(c).length||missingRules(c).length)?"visit":"ready";}
 function ordered(){return CLAIMS.slice().sort((a,b)=>{const da=decisionOf(a)?1:0,db=decisionOf(b)?1:0;if(da!==db)return da-db;return stateOf(b).score-stateOf(a).score||a.id.localeCompare(b.id);});}
 function nextCase(c){return ordered().find(x=>x.id!==(c&&c.id)&&!decisionOf(x));}
 const OPTIONS=[
@@ -797,7 +1052,8 @@ function nextStep(c,st){
   const dec=decisionOf(c);
   if(dec){const nx=nextCase(c);return {done:true,t:`Decided: ${dec.verdict}.`,d:nx?`Next up: ${nx.patient.name} (risk ${stateOf(nx).score}).`:"That was the last open case.",label:nx?"Open next case":"",act:"next"};}
   const fails=st.checks.filter(k=>k.status==="fail").length,v=visitOf(c),miss=missingSlots(c);
-  if(v.status!=="done"||miss.length){const todo=[];if(v.status!=="done")todo.push("home visit answers");if(miss.length)todo.push(`${miss.length} required photo${miss.length>1?"s":""}`);
+  const mr=missingRules(c);
+  if(v.status!=="done"||miss.length||mr.length){const todo=[];if(v.status!=="done")todo.push("home visit answers");if(miss.length)todo.push(`${miss.length} required photo${miss.length>1?"s":""}`);if(mr.length)todo.push(`${mr.length} state rule question${mr.length>1?"s":""}`);
     return {t:fails?`${fails} problem${fails>1?"s":""} found. Confirm on the field visit.`:"The documents look fine. Confirm on the field visit.",d:`Still needed: ${todo.join(" and ")}.`,label:"Go to field visit",act:"field"};}
   return {t:"Evidence is complete. Record your decision.",d:`Suggested: ${suggest(st).v}.`,label:"Decide now",act:"decide"};
 }
@@ -805,7 +1061,7 @@ function tabDot(c,st,tab){
   const worst=list=>list.some(k=>k.status==="fail")?"fail":list.some(k=>k.status==="warn")?"warn":list.some(k=>k.status==="pending")?"pending":"pass";
   if(tab==="review")return worst(st.checks);
   if(tab==="docs")return worst(st.checks.filter(k=>TAB_FOR[k.group]==="docs"));
-  if(tab==="field")return (visitOf(c).status==="done"&&!missingSlots(c).length)?worst(st.checks.filter(k=>TAB_FOR[k.group]==="field")):"pending";
+  if(tab==="field")return (visitOf(c).status==="done"&&!missingSlots(c).length&&!missingRules(c).length)?worst(st.checks.filter(k=>TAB_FOR[k.group]==="field")):"pending";
   return decisionOf(c)?"pass":"pending";
 }
 
@@ -819,9 +1075,10 @@ function renderTop(){
   document.getElementById("progress").innerHTML=`<span><b>${done} of ${CLAIMS.length}</b> cases decided</span><span class="bar"><i style="width:${pct}%"></i></span>`;
 }
 function renderFilters(){
-  const cnt={all:CLAIMS.length,high:0,visit:0,ready:0,decided:0};
+  const cnt={all:CLAIMS.length,high:0,visit:0,ready:0,decided:0,imported:CLAIMS.filter(c=>c.source==="import").length};
   CLAIMS.forEach(c=>{if(stateOf(c).band==="high"&&!decisionOf(c))cnt.high++;cnt[stageOf(c)]++;});
-  const F=[["all","All"],["high","High risk"],["visit","Needs visit"],["ready","Ready"],["decided","Decided"]];
+  const F=[["all","All"],["high","High risk"],["visit","Needs visit"],["ready","Ready"],["decided","Decided"]].concat(cnt.imported?[["imported","Imported"]]:[]);
+  document.getElementById("qtools").innerHTML=canImport()?`<button class="btn ghost small" data-imp="open" title="Upload a CSV or Excel case list from the client">Import cases</button>`:"";
   document.getElementById("filters").innerHTML=F.map(([k,l])=>`<button class="chip" data-filter="${k}" aria-pressed="${UI.filter===k}">${l} <b>${cnt[k]}</b></button>`).join("");
 }
 function renderQueue(){
@@ -829,12 +1086,13 @@ function renderQueue(){
   const items=ordered().filter(c=>{
     if(UI.filter==="high"&&(stateOf(c).band!=="high"||decisionOf(c)))return false;
     if(["visit","ready","decided"].includes(UI.filter)&&stageOf(c)!==UI.filter)return false;
+    if(UI.filter==="imported"&&c.source!=="import")return false;
     return (c.id+" "+c.patient.name+" "+c.hospital+" "+c.village+" "+c.pkg.name).toLowerCase().includes(q);
   });
   document.getElementById("qlist").innerHTML=items.length?items.map(c=>{const st=stateOf(c),sg=stageOf(c);
     return `<li><a class="qitem" href="#${c.id}" ${sel===c.id?'aria-current="true"':""}>
       <span class="score s-${st.band}" aria-label="Risk ${st.score}">${st.score}</span>
-      <span><span class="qname"><span>${esc(c.patient.name)}</span><span class="stage st-${sg}">${STAGE[sg]}</span></span>
+      <span><span class="qname"><span>${esc(c.patient.name)}</span><span class="stage st-${sg}">${STAGE[sg]}</span></span>${c.reason?`<span class="qreason">${esc(c.reason)}</span>`:""}
       <span class="qmeta" style="display:block">${esc(c.pkg.name)} · ${esc(shortHosp(c.hospital))}</span></span></a></li>`;}).join("")
     :`<li class="qempty">No cases match. Clear the search or choose another filter.</li>`;
 }
@@ -849,9 +1107,9 @@ function renderCase(){
     <button class="back" type="button" data-act="home">‹ All cases</button>
     <div class="head"><div>
       <h1>${esc(c.patient.name)}, ${c.patient.age}${esc(c.patient.gender)}</h1>
-      <p class="sub">${esc(c.id)} · ${esc(c.hospital)}</p>
+      <p class="sub">${esc(c.id)} · ${esc(c.hospital)} · ${esc(clientOf(c).name)}</p>
       <div class="meta"><div><span>Package</span> ${esc(c.pkg.name)}</div><div><span>Claimed</span> ${inr(c.claimAmount)}</div>
-        <div><span>Stay</span> ${day(c.dates.admit)} to ${day(c.dates.discharge)}</div><div><span>Village</span> ${esc(c.village)}</div></div>
+        <div><span>Stay</span> ${day(c.dates.admit)} to ${day(c.dates.discharge)}</div><div><span>Village</span> ${esc(c.village||c.district||"Not given")}</div>${c.reason?`<div><span>Audit reason</span> ${esc(c.reason)}</div>`:""}</div>
     </div>
     <div class="dial" style="--v:${st.score};--c:${col}" role="img" aria-label="Risk ${st.score} of 100, ${BAND[st.band]}"><div><span>Risk</span><b>${st.score}</b><span>${BAND[st.band]}</span></div></div></div>
     <div class="next ${ns.done?"done":""}"><div><p class="t">${esc(ns.t)}</p><p class="d">${esc(ns.d)}</p></div>${ns.label?`<button class="btn" data-act="${ns.act}">${esc(ns.label)}</button>`:""}</div>
@@ -903,7 +1161,7 @@ function docsView(c){
     ${pages.length?`<div class="section"><h2>Read from the hospital’s pages</h2><div class="slots">${pages.map(p=>`<div class="slot wide"><div class="slot-h"><b>${esc(slotOf(p.slot).label)}</b></div>${readCard(c,p)}</div>`).join("")}</div></div>`:""}
     <div class="section"><h2>Files in the claim</h2>
     <div class="tablewrap"><table><thead><tr><th>File</th><th>Made with</th><th>Issued</th><th>Last edited</th><th>Stamp match</th><th>Fingerprint</th></tr></thead>
-    <tbody>${c.files.map(f=>`<tr><td>${esc(f.name)}</td><td class="${EDITORS.includes(f.producer)?"bad":""}">${esc(f.producer)}</td><td>${day(f.created)||"—"}</td><td>${day(f.modified)||"—"}</td><td class="${f.stamp!=null&&f.stamp<0.9?"bad":""}">${f.stamp==null?"—":Math.round(f.stamp*100)+"%"}</td><td class="${(hashIndex[f.hash]||[]).length>1?"bad":""}">${esc(f.hash)}</td></tr>`).join("")}</tbody></table></div>
+    <tbody>${c.files.length?"":`<tr><td colspan="6">No files attached yet. Imported cases start with the client’s case details only.</td></tr>`}${c.files.map(f=>`<tr><td>${esc(f.name)}</td><td class="${EDITORS.includes(f.producer)?"bad":""}">${esc(f.producer)}</td><td>${day(f.created)||"—"}</td><td>${day(f.modified)||"—"}</td><td class="${f.stamp!=null&&f.stamp<0.9?"bad":""}">${f.stamp==null?"—":Math.round(f.stamp*100)+"%"}</td><td class="${(hashIndex[f.hash]||[]).length>1?"bad":""}">${esc(f.hash)}</td></tr>`).join("")}</tbody></table></div>
     <p class="hint" style="margin-top:8px">In the full product these values come from scanning the uploaded files. Here they’re preset sample values.</p></div>`;
 }
 
@@ -938,6 +1196,11 @@ const QS={
   en:{admitted:"Were you admitted to this hospital?",stay:"How many days did you stay?",paid:"Did you pay any money to the hospital? How much (₹)?",papers:"Do you have your discharge papers?",notes:"Auditor’s notes",yes:"Yes",no:"No"},
   te:{admitted:"మీరు ఈ ఆసుపత్రిలో చేరారా?",stay:"మీరు ఎన్ని రోజులు ఉన్నారు?",paid:"మీరు ఆసుపత్రికి ఏమైనా డబ్బు చెల్లించారా? ఎంత (₹)?",papers:"మీ దగ్గర డిశ్చార్జ్ పేపర్లు ఉన్నాయా?",notes:"ఆడిటర్ నోట్స్",yes:"అవును",no:"కాదు"}
 };
+function rulesBlock(c){
+  const qs=ruleQuestions(c),cl=clientOf(c);if(!qs.length)return "";const ra=ruleAnswers(c.id);
+  return `<div class="section"><div class="parthead"><div><h2>Scheme rules</h2><p class="hint">Set by ${esc(cl.name)}: ${esc(rulesText(cl))}.</p></div></div>
+    <div class="visit">${qs.map(q=>`<div class="q"><span class="ql">${esc(q.ask)}</span><div class="yn">${["yes","no"].map(v=>`<label><input type="radio" name="rule-${q.id}" data-rule="${q.id}" value="${v}" ${ra[q.id]===v?"checked":""}><span>${v==="yes"?"Yes":"No"}</span></label>`).join("")}</div></div>`).join("")}</div></div>`;
+}
 function fieldView(c){
   const hs=SLOTS.filter(s=>s.visit==="hospital"),ms=SLOTS.filter(s=>s.visit==="home");
   const left=list=>list.filter(s=>s.req&&!photosOf(c.id).some(p=>p.slot===s.id)).length;
@@ -948,7 +1211,7 @@ function fieldView(c){
     <button data-part="home" aria-pressed="${UI.part==="home"}">Home visit ${homeLeft?`<span class="mini">${homeLeft} to do</span>`:`<span class="mini">Done</span>`}</button></div>`;
   if(UI.part==="hospital")return seg+`<div class="parthead"><p class="hint">Photograph each item at ${esc(shortHosp(c.hospital))}. Every photo is stamped with time, place and your name. ${storeNote}</p>
       <button class="btn ghost small" data-sample="hospital">Add sample photos (demo)</button></div>
-    <div class="slots">${hs.map(s=>slotCard(c,s)).join("")}</div>`;
+    <div class="slots">${hs.map(s=>slotCard(c,s)).join("")}</div>${rulesBlock(c)}`;
   const q=QS[UI.lang],cls=UI.lang==="te"?"te":"";
   const yn=(name,val)=>`<div class="yn"><label><input type="radio" name="${name}" value="yes" ${val==="yes"?"checked":""}><span class="${cls}">${q.yes}</span></label><label><input type="radio" name="${name}" value="no" ${val==="no"?"checked":""}><span class="${cls}">${q.no}</span></label></div>`;
   return seg+`<label class="consent"><input type="checkbox" id="consent" ${consentOf(c.id)?"checked":""}><span>The patient or a family member agreed to the visit and to photos<small>Needed before taking photos of the patient. Only the auditor’s location is recorded, never data from the patient’s phone.</small></span></label>
@@ -978,18 +1241,21 @@ function decideView(c,st){
     </section>
     ${reportView(c,st)}</div>`;
 }
-const SCHEME="AB PM-JAY · Dr. NTR Vaidya Seva";
+
 const RES={pass:["Pass","tp"],warn:["Needs a look","tw"],fail:["Failed","tf"],pending:["Waiting","tq"]};
 const OUTSTANDING={
   "Page reading":"The admission register and case sheet have not been photographed and read yet.",
   "Visit evidence":"Visit photos have not been taken yet.",
   "Home visit":"The home visit with the patient has not been done yet.",
-  "Cross-check":"The patient’s own discharge papers have not been collected yet."
+  "Cross-check":"The patient’s own discharge papers have not been collected yet.",
+  "File tampering":"The claim documents (bills, discharge summary) have not been attached yet.",
+  "Visual consistency":"The claim documents have not been attached yet, so stamps can’t be compared.",
+  "State rules":"A scheme rule question has not been answered yet."
 };
 function amountQuestioned(c,st){
   const f=st.checks.filter(k=>k.status==="fail").map(k=>k.group);
   if(CRITICAL.some(g=>f.includes(g)))return {amt:c.claimAmount,why:"Full claim, because of fraud signals"};
-  if(f.includes("Billing")){const ledger=Number(c.hospitalRecord.billAmount)||c.pkg.rate,base=Math.min(c.pkg.rate,ledger),x=c.claimAmount-base;
+  if(f.includes("Billing")){const ledger=Number(c.hospitalRecord.billAmount)||c.pkg.rate||c.claimAmount,base=Math.min(c.pkg.rate||ledger,ledger),x=c.claimAmount-base;
     if(x>0)return {amt:x,why:ledger<c.pkg.rate?"Billed above the hospital’s own ledger":"Billed above the package rate"};}
   return {amt:0,why:"No excess found"};
 }
@@ -1012,10 +1278,10 @@ function reportView(c,st){
     if(k.group==="Page reading"){const cnt=pages.reduce((s,p)=>s+comparePage(c,p.slot,readsOf(c.id)[p.id].fields).filter(x=>x.st===k.status).length,0);
       return `<li>${pr} The hospital’s own register or case sheet ${k.status==="fail"?"contradicts":"doesn’t fully confirm"} the claim on ${cnt} detail${cnt===1?"":"s"} (section 3).</li>`;}
     return `<li>${pr} ${esc(k.evidence[0]||k.detail)}${k.evidence.length>1?` ${k.evidence.slice(1).map(esc).join(" ")}`:""}</li>`;}).join("");
-  const kv=[["Claim number",c.id,"Scheme",SCHEME],["Patient",c.patient.name,"Age and sex",`${c.patient.age}, ${fmtVal("gender",c.patient.gender)}`],
-    ["Masked Aadhaar","xxxx xxxx "+c.patient.aadhaar,"Address",`${c.village}, ${c.district} district`],["Hospital",c.hospital,"Treating doctor",c.doctor],
-    ["Package",`${c.pkg.code} ${c.pkg.name}`,"Package rate",inr(c.pkg.rate)],["Admitted",day(c.dates.admit),"Discharged",`${day(c.dates.discharge)} (${n} night${n===1?"":"s"})`],
-    ["Diagnosis",c.diagnosis,"Amount claimed",inr(c.claimAmount)]];
+  const kv=[["Claim number",c.id,"Scheme",clientOf(c).scheme],["Patient",c.patient.name,"Age and sex",`${c.patient.age}, ${fmtVal("gender",c.patient.gender)}`],
+    ["Masked Aadhaar","xxxx xxxx "+c.patient.aadhaar,"Address",[c.village,c.district&&c.district+" district"].filter(Boolean).join(", ")||"Not given"],["Hospital",c.hospital,"Treating doctor",c.doctor],
+    ["Package",`${c.pkg.code} ${c.pkg.name}`,"Package rate",c.pkg.rate?inr(c.pkg.rate):"Not given"],["Admitted",day(c.dates.admit),"Discharged",`${day(c.dates.discharge)} (${n} night${n===1?"":"s"})`],
+    ["Diagnosis",c.diagnosis||"Not given","Amount claimed",inr(c.claimAmount)],["Client",`${clientOf(c).name} (rules: ${rulesText(clientOf(c))})`,"Reason for audit",c.reason||"Not given"]];
   const q=QS.en;
   return `<article class="report" id="report">
     ${dec?"":`<div class="watermark" aria-hidden="true">Draft</div>`}
@@ -1032,7 +1298,7 @@ function reportView(c,st){
         :`<span class="g-lbl">Recommended action (no decision yet)</span><span class="big">${esc(sg.v)}</span><span class="why">${esc(sg.why)}</span>`}</div>
       <div class="g-kpis">
         <div class="kpi"><small>Risk score</small><b class="lv-${st.band}">${st.score} of 100</b><small>${BAND[st.band]}</small></div>
-        <div class="kpi"><small>Amount claimed</small><b>${inr(c.claimAmount)}</b><small>Package rate ${inr(c.pkg.rate)}</small></div>
+        <div class="kpi"><small>Amount claimed</small><b>${inr(c.claimAmount)}</b><small>Package rate ${c.pkg.rate?inr(c.pkg.rate):"not given"}</small></div>
         <div class="kpi"><small>Amount questioned</small><b>${inr(aq.amt)}</b><small>${esc(aq.why)}</small></div>
         <div class="kpi"><small>Checks</small><b>${fails.length} failed</b><small>${warns.length} need a look, ${pend.length} waiting. ${esc(ev.photos)}; ${esc(ev.visit.toLowerCase())}; ${esc(ev.pages)}.</small></div>
       </div>
@@ -1088,6 +1354,7 @@ function reportView(c,st){
       <p><b>How the risk score works.</b> Each failed check adds 30 points, or 50 for fraud signals (patient denies treatment, reused images, edited files, identity mismatch, hospital pages that contradict the claim). Each item that needs a look adds 12. The score is capped at 100: 50 or more is high risk, 20 to 49 medium, under 20 low.</p>
       <p><b>Who decides.</b> ClaimSure flags problems and suggests an action. A qualified medical auditor reviews the evidence and makes every decision.</p>
       <p><b>Evidence handling.</b> Photos are stamped with time, the auditor’s location and name, and fingerprinted (SHA-256) so reused images are detected. Hospital pages are read automatically and can be corrected by the auditor; corrections are marked in section 3. Only masked Aadhaar numbers are recorded.</p>
+      <p><b>Scheme rules.</b> This case was checked with ${esc(rulesText(clientOf(c)))} rules, set by the client, ${esc(clientOf(c).name)}.</p>
       <p><b>Demo notice.</b> This report was produced from made-up sample data. Package rates are illustrative, not official.</p>
     </section>
     <p class="dfoot">Confidential: contains patient health information. Share only with authorised staff of the scheme, insurer or audit agency.</p>
@@ -1134,6 +1401,16 @@ function saveDecision(c,openNext){
 
 document.addEventListener("click",async e=>{
   const b=e.target.closest("button,[data-open]");if(!b)return;const c=currentCase(),d=b.dataset;
+  if(d.imp){
+    if(d.imp==="open"){if(canImport())openImporter();return;}
+    if(d.imp==="close"){document.getElementById("importer").close();return;}
+    if(d.imp==="template"){download("claimsure-case-template.csv",templateCSV());return;}
+    if(d.imp==="sample"){IMP.client="ap-trust";onImportFile(parseCSV(sampleBatchCSV()),"sample-batch-ntr-trust.csv");return;}
+    if(d.imp==="back"){IMP.step=Math.max(1,IMP.step-1);renderImporter();return;}
+    if(d.imp==="check"){IMP.checked=checkRows(IMP.table,IMP.map,IMP.client);IMP.step=3;renderImporter();return;}
+    if(d.imp==="import"){doImport();return;}
+    if(d.imp==="remove"){removeBatch(d.batch);return;}
+    return;}
   if(d.filter){UI.filter=d.filter;renderFilters();renderQueue();return;}
   if(d.open){location.hash=d.open;return;}
   if(d.tab){UI.tab=d.tab;UI.editing=null;renderCase();window.scrollTo({top:0});return;}
@@ -1141,7 +1418,7 @@ document.addEventListener("click",async e=>{
   if(d.lang){UI.lang=d.lang;renderCase();return;}
   if(!c&&d.act!=="home")return;
   if(d.act==="home"){location.hash="";return;}
-  if(d.act==="field"||d.act==="decide"){UI.tab=d.act;if(d.act==="field")UI.part=missingSlots(c).some(s=>s.visit==="hospital")?"hospital":"home";renderCase();window.scrollTo({top:0});return;}
+  if(d.act==="field"||d.act==="decide"){UI.tab=d.act;if(d.act==="field")UI.part=(missingSlots(c).some(s=>s.visit==="hospital")||missingRules(c).length)?"hospital":"home";renderCase();window.scrollTo({top:0});return;}
   if(d.act==="next"){const nx=nextCase(c);if(nx){UI.tab="review";location.hash=nx.id;}return;}
   if(d.act==="print"){window.print();return;}
   if(d.act==="savedec"){saveDecision(c,false);return;}
@@ -1169,7 +1446,11 @@ document.addEventListener("click",async e=>{
     catch(err){toast(err.message,true);}return;}
 });
 document.addEventListener("change",e=>{
+  if(e.target.name==="impclient"){IMP.client=e.target.value;return;}
+  if(e.target.id==="impfile"&&e.target.files[0]){onImportFile(e.target.files[0]);return;}
+  if(e.target.dataset.map){const v=e.target.value;if(v==="")delete IMP.map[e.target.dataset.map];else{const i=Number(v);Object.keys(IMP.map).forEach(k=>{if(IMP.map[k]===i)delete IMP.map[k];});IMP.map[e.target.dataset.map]=i;}renderImporter();return;}
   const c=currentCase();if(!c)return;
+  if(e.target.dataset.rule){const ra=Object.assign({},ruleAnswers(c.id),{[e.target.dataset.rule]:e.target.value});setCase(c.id,{rules:ra});renderAll();toast("Answer saved. Risk updated.");return;}
   if(e.target.matches("input[data-slot]"))onCapture(c,e.target);
   if(e.target.id==="consent"){setCase(c.id,{consent:e.target.checked});renderCase();}
 });
@@ -1183,7 +1464,7 @@ window.addEventListener("hashchange",()=>{UI.tab="review";UI.editing=null;render
 fetch("/api/me",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(u=>{
   if(!u)return;ME=u;const w=document.getElementById("me");
   w.innerHTML=`<span class="avatar" aria-hidden="true">${esc(u.name.split(" ").map(x=>x[0]).join("").slice(0,2))}</span><span><span class="nm">${esc(u.name)}</span><span class="rl">${esc(u.role)}</span></span><a href="/logout">Sign out</a>`;
-  w.hidden=false;if(!currentCase())renderCase();
+  w.hidden=false;renderFilters();if(!currentCase())renderCase();
 }).catch(()=>{});
 
 </script>
