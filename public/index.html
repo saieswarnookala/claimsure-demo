@@ -232,20 +232,60 @@ td.bad{color:var(--fail);font-weight:700;background:color-mix(in srgb,var(--fail
 .choose textarea{width:100%;min-height:80px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);resize:vertical}
 .lbl{font-weight:700;font-size:14.5px}
 
-.report{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:26px 30px;position:relative}
-.report h3{font-size:15.5px;margin:20px 0 6px}
+.report{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:30px 34px;position:relative;overflow:hidden;font-size:15px}
+.report section{margin-top:26px}
+.report h2{font-size:15px;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line);letter-spacing:.01em}
 .report p{margin:4px 0}
-.report ul{margin:4px 0;padding-left:18px}
-.rhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:12px}
-.rhead b{font-size:20px}
-.rphotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:6px}
-.rphotos figure{margin:0}
-.rphotos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;display:block}
-.rphotos figcaption{font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:3px}
-.stamp{flex:none;align-self:center;transform:rotate(-6deg);border:3px double currentColor;border-radius:10px;padding:6px 14px;font-weight:700;font-size:17px;letter-spacing:.04em;line-height:1.15;text-align:center;opacity:.92;background:color-mix(in srgb,currentColor 6%,transparent)}
+.dh{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;padding-bottom:14px;border-bottom:3px solid var(--brand)}
+.dh-brand{display:flex;gap:10px;align-items:center;color:var(--brand)}
+.dh-brand svg{width:34px;height:34px}
+.dh-brand b{display:block;color:var(--ink);font-size:18px;line-height:1.1}
+.dh-brand span{color:var(--muted);font-size:13.5px}
+.dh-ref{display:grid;grid-template-columns:repeat(3,auto);gap:2px 18px;margin:0;font-size:13px}
+.dh-ref dt{color:var(--muted)}
+.dh-ref dd{margin:0;font-weight:700}
+.dtitle{font-size:24px;line-height:1.2;margin:18px 0 2px}
+.dsub{color:var(--muted);margin:0}
+.glance{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0;border:1px solid var(--line);border-radius:10px;margin-top:18px;overflow:hidden}
+.g-out{padding:16px 18px;background:var(--brand-soft);display:grid;gap:6px;align-content:start}
+.g-lbl{font-size:12.5px;color:var(--muted);font-weight:700}
+.g-out .big{font-size:20px;font-weight:700;line-height:1.2}
+.g-out .why{color:var(--muted);font-size:14px}
+.g-kpis{display:grid;grid-template-columns:1fr 1fr}
+.kpi{padding:12px 16px;border-left:1px solid var(--line);border-bottom:1px solid var(--line)}
+.kpi:nth-child(n+3){border-bottom:0}
+.kpi b{display:block;font-size:19px;line-height:1.2}
+.kpi small{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}
+.kpi .lv-high{color:var(--fail)} .kpi .lv-med{color:var(--warn)} .kpi .lv-low{color:var(--pass)}
+.kf{margin:0;padding-left:22px;display:grid;gap:6px}
+.kf .tagf{font-weight:700}
+.tf{color:var(--fail)} .tw{color:var(--warn)} .tp{color:var(--pass)} .tq{color:var(--pending)}
+.report table{font-size:13.5px}
+.report th,.report td{padding:7px 10px}
+.kv th{width:20%;color:var(--muted);font-weight:700;background:none}
+.kv td{width:30%}
+.ct td:first-child,.ct th:first-child{width:28px;color:var(--muted)}
+.ct .res{font-weight:700;white-space:nowrap}
+.ct ul{margin:4px 0 0;padding-left:16px}
+.rphotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.rphotos figure{margin:0;break-inside:avoid}
+.rphotos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;display:block;border:1px solid var(--line)}
+.rphotos figcaption{font-size:11.5px;color:var(--muted);line-height:1.4;margin-top:4px}
+.rphotos figcaption b{color:var(--ink)}
+.stamp{display:inline-block;justify-self:start;transform:rotate(-4deg);border:3px double currentColor;border-radius:10px;padding:5px 14px;font-weight:700;font-size:16px;letter-spacing:.04em;line-height:1.15;text-align:center;background:color-mix(in srgb,currentColor 7%,transparent);margin-top:4px}
 .stamp small{display:block;font-size:11px;letter-spacing:0;font-weight:400}
 .stamp.v-pass{color:var(--pass)} .stamp.v-recover{color:var(--warn)} .stamp.v-refer{color:var(--fail)} .stamp.v-hold{color:var(--brand)}
-.sign{margin-top:22px;color:var(--muted);font-size:14px}
+.watermark{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-size:120px;font-weight:700;color:var(--ink);opacity:.045;transform:rotate(-28deg);letter-spacing:.08em}
+.signs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.sigbox{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;gap:10px;font-size:13.5px}
+.sigbox b{font-size:14px}
+.sigline{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:end}
+.sigline span{color:var(--muted)}
+.sigline i{border-bottom:1px solid var(--muted);min-height:22px;font-style:normal}
+.annex p{font-size:13px;color:var(--muted)}
+.report .hint{font-size:.88em}
+.report td .hint,.report td small{font-size:.92em}
+.dfoot{margin-top:24px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 
 /* Welcome */
 .welcome{max-width:620px;padding:40px 0}
@@ -292,13 +332,33 @@ dialog#viewer p{font-size:14px;color:var(--muted);margin:0 0 12px}
   .step .lb{overflow:visible}
   .slot.wide{grid-template-columns:1fr}
   .slot.wide>.readcard{grid-column:1;grid-row:auto;border-top:1px solid var(--line);padding-top:10px}
-  .report{padding:20px 18px}
+  .report{padding:20px 16px}
+  .glance{grid-template-columns:1fr}
+  .signs{grid-template-columns:1fr}
+  .dh-ref{grid-template-columns:repeat(3,auto)}
 }
+@page{size:A4;margin:16mm 14mm 18mm;
+  @bottom-left{content:"ClaimSure claim audit report · Confidential";font-family:"Atkinson Hyperlegible",Arial,sans-serif;font-size:8.5pt;color:#5B6479}
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font-family:"Atkinson Hyperlegible",Arial,sans-serif;font-size:8.5pt;color:#5B6479}}
 @media print{
-  .top,.demo-note,.queue,.back,.head,.next,.steps,.choose,.toast{display:none!important}
-  body,.case,.report{background:#fff;color:#000}
-  .app,.decide{display:block}
-  .report{border:0;padding:0}
+  :root:not([data-print]){--bg:#fff;--surface:#fff;--sunken:#EEF0F5;--ink:#141B34;--muted:#4F586C;--line:#CBD2DF;--brand:#3340A0;--brand-soft:#ECEEFA;--accent:#9A6200;--pass:#1A6B43;--warn:#8F5400;--fail:#B02E24;--pending:#5C6478;color-scheme:light}
+  html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body::before,.top,.demo-note,.queue,.back,.head,.next,.steps,.choose,.toast,#viewer{display:none!important}
+  .app,.decide,.case,.wrap{display:block;padding:0;margin:0;max-width:none;min-height:0}
+  .report{border:0;border-radius:0;padding:0;font-size:10pt;overflow:visible}
+  .report section{margin-top:14pt}
+  .report h2{font-size:11pt;break-after:avoid}
+  .dtitle{font-size:17pt}
+  .report table{font-size:9pt}
+  .report .hint{font-size:8.5pt}
+  .kpi b{font-size:13pt}
+  .tablewrap{border-radius:4px;overflow:visible}
+  tr,figure,.sigbox,.glance{break-inside:avoid}
+  thead{display:table-header-group}
+  .report h2+p.hint{break-after:avoid}
+  .signs,.report section:has(.signs){break-inside:avoid}
+  .watermark{position:fixed;font-size:110pt;opacity:.06}
+  .glance{grid-template-columns:1.15fr 1fr}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -914,25 +974,123 @@ function decideView(c,st){
       <div class="opts" role="radiogroup">${OPTIONS.map(o=>`<label class="opt"><input type="radio" name="verdict" value="${esc(o.v)}" ${(dec.verdict||"")===o.v?"checked":""}><span><b>${esc(o.v)}${o.v===sg.v?"<em>Suggested</em>":""}</b><small>${esc(o.d)}</small></span></label>`).join("")}</div>
       <label class="lbl" for="dnote">Reason</label><textarea id="dnote" placeholder="One or two lines for the record">${esc(dec.note||"")}</textarea>
       <div class="row"><button class="btn" data-act="savedec">Save decision</button><button class="btn ghost" data-act="savenext">Save and open next</button></div>
-      <button class="link" data-act="print" style="justify-self:start">Print or save the report as PDF</button>
+      <button class="link" data-act="print" style="justify-self:start">Download or print the report (PDF)</button>
     </section>
     ${reportView(c,st)}</div>`;
 }
+const SCHEME="AB PM-JAY · Dr. NTR Vaidya Seva";
+const RES={pass:["Pass","tp"],warn:["Needs a look","tw"],fail:["Failed","tf"],pending:["Waiting","tq"]};
+const OUTSTANDING={
+  "Page reading":"The admission register and case sheet have not been photographed and read yet.",
+  "Visit evidence":"Visit photos have not been taken yet.",
+  "Home visit":"The home visit with the patient has not been done yet.",
+  "Cross-check":"The patient’s own discharge papers have not been collected yet."
+};
+function amountQuestioned(c,st){
+  const f=st.checks.filter(k=>k.status==="fail").map(k=>k.group);
+  if(CRITICAL.some(g=>f.includes(g)))return {amt:c.claimAmount,why:"Full claim, because of fraud signals"};
+  if(f.includes("Billing")){const ledger=Number(c.hospitalRecord.billAmount)||c.pkg.rate,base=Math.min(c.pkg.rate,ledger),x=c.claimAmount-base;
+    if(x>0)return {amt:x,why:ledger<c.pkg.rate?"Billed above the hospital’s own ledger":"Billed above the package rate"};}
+  return {amt:0,why:"No excess found"};
+}
+function evidenceLine(c){
+  const ph=photosOf(c.id),req=SLOTS.filter(s=>s.req),have=req.filter(s=>ph.some(p=>p.slot===s.id)).length;
+  const pages=ph.filter(p=>slotOf(p.slot).read),read=pages.filter(p=>readsOf(c.id)[p.id]).length;
+  return {photos:`${have} of ${req.length} required photos`,visit:visitOf(c).status==="done"?"Home visit done":"Home visit pending",pages:`${read} of 2 hospital pages read`};
+}
+function checkText(k){
+  if(k.status==="pending")return esc(OUTSTANDING[k.group]||k.detail);
+  return esc(k.detail)+(k.evidence.length&&k.group!=="Page reading"?`<ul>${k.evidence.map(e=>`<li>${esc(e)}</li>`).join("")}</ul>`:k.group==="Page reading"&&k.status!=="pass"?" See section 3.":"");
+}
 function reportView(c,st){
-  const v=visitOf(c),dec=decisionOf(c),ph=photosOf(c.id),bad=st.checks.filter(k=>k.status!=="pass"),opt=dec&&OPTIONS.find(o=>o.v===dec.verdict);
+  const v=visitOf(c),dec=decisionOf(c),ph=photosOf(c.id),opt=dec&&OPTIONS.find(o=>o.v===dec.verdict),sg=suggest(st),aq=amountQuestioned(c,st),ev=evidenceLine(c);
+  const fails=st.checks.filter(k=>k.status==="fail"),warns=st.checks.filter(k=>k.status==="warn"),pend=st.checks.filter(k=>k.status==="pending");
   const pages=ph.filter(p=>slotOf(p.slot).read&&readsOf(c.id)[p.id]);
+  const today=day(new Date().toISOString().slice(0,10)),n=nights(c.dates.admit,c.dates.discharge);
+  const kf=[...fails,...warns].map(k=>{
+    const pr=k.status==="fail"?`<span class="tagf tf">Failed:</span>`:`<span class="tagf tw">Needs a look:</span>`;
+    if(k.group==="Page reading"){const cnt=pages.reduce((s,p)=>s+comparePage(c,p.slot,readsOf(c.id)[p.id].fields).filter(x=>x.st===k.status).length,0);
+      return `<li>${pr} The hospital’s own register or case sheet ${k.status==="fail"?"contradicts":"doesn’t fully confirm"} the claim on ${cnt} detail${cnt===1?"":"s"} (section 3).</li>`;}
+    return `<li>${pr} ${esc(k.evidence[0]||k.detail)}${k.evidence.length>1?` ${k.evidence.slice(1).map(esc).join(" ")}`:""}</li>`;}).join("");
+  const kv=[["Claim number",c.id,"Scheme",SCHEME],["Patient",c.patient.name,"Age and sex",`${c.patient.age}, ${fmtVal("gender",c.patient.gender)}`],
+    ["Masked Aadhaar","xxxx xxxx "+c.patient.aadhaar,"Address",`${c.village}, ${c.district} district`],["Hospital",c.hospital,"Treating doctor",c.doctor],
+    ["Package",`${c.pkg.code} ${c.pkg.name}`,"Package rate",inr(c.pkg.rate)],["Admitted",day(c.dates.admit),"Discharged",`${day(c.dates.discharge)} (${n} night${n===1?"":"s"})`],
+    ["Diagnosis",c.diagnosis,"Amount claimed",inr(c.claimAmount)]];
+  const q=QS.en;
   return `<article class="report" id="report">
-    <div class="rhead"><div><b>Claim audit report</b><p class="hint">${esc(c.id)} · desk audit, document checks and field visit · prepared ${day(new Date().toISOString().slice(0,10))}</p></div>
-      ${dec?`<div class="stamp ${opt?opt.cls:""}">${esc(dec.verdict)}<small>${esc(dec.by||"Auditor")}, ${day(String(dec.at||"").slice(0,10))}</small></div>`:""}</div>
-    <h3>1. Case</h3><p>${esc(c.patient.name)}, ${c.patient.age}${esc(c.patient.gender)}, ${esc(c.village)}, ${esc(c.district)} district. Treated at ${esc(c.hospital)} by ${esc(c.doctor)}.</p>
-    <p>Package ${esc(c.pkg.code)} ${esc(c.pkg.name)}. Admitted ${day(c.dates.admit)}, discharged ${day(c.dates.discharge)}. Claimed ${inr(c.claimAmount)} against a package rate of ${inr(c.pkg.rate)}.</p>
-    <h3>2. Checks</h3><p>${st.checks.length} checks: ${st.checks.filter(k=>k.status==="pass").length} passed, ${st.checks.filter(k=>k.status==="warn").length} need a look, ${st.checks.filter(k=>k.status==="fail").length} failed, ${st.checks.filter(k=>k.status==="pending").length} waiting. Risk score ${st.score} of 100 (${BAND[st.band].toLowerCase()}).</p>
-    <h3>3. Findings</h3>${bad.length?`<ul>${bad.map(k=>`<li><b>${esc(k.title)}:</b> ${esc(k.detail)}${k.evidence.length&&k.group!=="Page reading"?" "+k.evidence.map(esc).join(" "):k.group==="Page reading"&&k.status!=="pending"?" See section 4.":""}</li>`).join("")}</ul>`:"<p>No problems found.</p>"}
-    <h3>4. Hospital pages read</h3>${pages.length?`<ul>${pages.map(p=>{const rows=comparePage(c,p.slot,readsOf(c.id)[p.id].fields),b=rows.filter(x=>x.st==="fail");return `<li><b>${esc(slotOf(p.slot).short)}:</b> ${b.length?b.map(x=>`${x.label} “${esc(fmtVal(x.k,x.page))}” vs claim “${esc(fmtVal(x.k,x.claim))}”`).join("; ")+".":"matches the claim."}</li>`;}).join("")}</ul>`:"<p>No pages read.</p>"}
-    <h3>5. Home visit</h3><p>${v.status==="done"?`Visited. Admitted: ${v.admitted==="yes"?"yes":"no"}. Stay recalled: ${v.stay===""||v.stay==null?"not given":v.stay+" day(s)"}. Paid by patient: ${inr(v.paid)}. Discharge papers: ${v.papers||"not asked"}.${v.notes?" Notes: "+esc(v.notes):""}`:"Not done yet."}</p>
-    <h3>6. Photo evidence</h3>${ph.length?`<div class="rphotos">${ph.map(p=>`<figure><img src="${esc(p.src)}" alt="${esc(slotOf(p.slot).label)}"><figcaption><b>${esc(slotOf(p.slot).label)}</b><br>${stampText(c,p)}</figcaption></figure>`).join("")}</div>`:"<p>No photos taken.</p>"}
-    <h3>7. Decision</h3><p>${dec?`${esc(dec.verdict)}.${dec.note?" "+esc(dec.note):""}`:"Not recorded yet."}</p>
-    <p class="sign">Signed: ____________________ Medical auditor, registration no. ________</p>
+    ${dec?"":`<div class="watermark" aria-hidden="true">Draft</div>`}
+    <header class="dh">
+      <div class="dh-brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2.2 2"/><path d="M11 16.5l3.4 3.4 7.1-7.4" fill="none" stroke="var(--accent-line)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div><b>ClaimSure</b><span>Claim audit report</span></div></div>
+      <dl class="dh-ref"><div><dt>Reference</dt><dd>CS-AR-${esc(c.id)}</dd></div><div><dt>Status</dt><dd>${dec?"Final":"Draft"}</dd></div><div><dt>Prepared</dt><dd>${today}</dd></div></dl>
+    </header>
+    <h1 class="dtitle">${esc(c.patient.name)}, claim ${esc(c.id)}</h1>
+    <p class="dsub">${esc(c.pkg.name)} at ${esc(c.hospital)}</p>
+
+    <div class="glance">
+      <div class="g-out">${dec?`<span class="g-lbl">Auditor’s decision</span><span class="big">${esc(dec.verdict)}</span><span class="why">${esc(dec.note||sg.why)}</span><span class="stamp ${opt?opt.cls:""}">${esc(dec.verdict)}<small>${esc(dec.by||"Auditor")}, ${day(String(dec.at||"").slice(0,10))}</small></span>`
+        :`<span class="g-lbl">Recommended action (no decision yet)</span><span class="big">${esc(sg.v)}</span><span class="why">${esc(sg.why)}</span>`}</div>
+      <div class="g-kpis">
+        <div class="kpi"><small>Risk score</small><b class="lv-${st.band}">${st.score} of 100</b><small>${BAND[st.band]}</small></div>
+        <div class="kpi"><small>Amount claimed</small><b>${inr(c.claimAmount)}</b><small>Package rate ${inr(c.pkg.rate)}</small></div>
+        <div class="kpi"><small>Amount questioned</small><b>${inr(aq.amt)}</b><small>${esc(aq.why)}</small></div>
+        <div class="kpi"><small>Checks</small><b>${fails.length} failed</b><small>${warns.length} need a look, ${pend.length} waiting. ${esc(ev.photos)}; ${esc(ev.visit.toLowerCase())}; ${esc(ev.pages)}.</small></div>
+      </div>
+    </div>
+
+    <section><h2>Key findings</h2>${kf?`<ol class="kf">${kf}</ol>`:`<p>No problems found in the checks completed so far.</p>`}
+      ${pend.length?`<p class="hint" style="margin-top:8px">${pend.length} check${pend.length>1?"s are":" is"} still waiting on evidence (section 5), so this picture may change.</p>`:""}</section>
+
+    <section><h2>1. Case details</h2><div class="tablewrap"><table class="kv"><tbody>${kv.map(r=>`<tr><th scope="row">${r[0]}</th><td>${esc(r[1])}</td><th scope="row">${r[2]}</th><td>${esc(r[3])}</td></tr>`).join("")}</tbody></table></div></section>
+
+    <section><h2>2. Checks performed</h2>
+      <p class="hint" style="margin-bottom:8px">${st.checks.length} checks: ${st.checks.filter(k=>k.status==="pass").length} passed, ${warns.length} need a look, ${fails.length} failed, ${pend.length} waiting on evidence.</p>
+      <div class="tablewrap"><table class="ct"><thead><tr><th>#</th><th>Check</th><th>Result</th><th>What was found</th></tr></thead><tbody>
+      ${st.checks.map((k,i)=>`<tr><td>${i+1}</td><td><b>${esc(k.title)}</b><br><span class="hint">${esc(k.group)}</span></td><td class="res ${RES[k.status][1]}">${RES[k.status][0]}</td><td>${checkText(k)}</td></tr>`).join("")}
+      </tbody></table></div></section>
+
+    <section><h2>3. Hospital pages read</h2>${pages.length?pages.map(p=>{const r=readsOf(c.id)[p.id],rows=comparePage(c,p.slot,r.fields);
+      return `<p style="margin:10px 0 6px"><b>${esc(slotOf(p.slot).label)}</b> <span class="hint">· read by ${r.method==="ai"?"AI":"text recognition"}${r.corrected?", corrected by the auditor":""}</span></p>
+      <div class="tablewrap"><table><thead><tr><th>Detail</th><th>Claim</th><th>On the page</th><th>Result</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><th scope="row">${x.label}</th><td>${esc(fmtVal(x.k,x.claim))}</td><td>${esc(fmtVal(x.k,x.page)||"Not found")}</td><td class="res ${x.st==="pass"?"tp":x.st==="fail"?"tf":"tw"}"><b>${x.st==="pass"?"Matches":x.st==="fail"?"Differs":"Unclear"}</b>${x.note&&x.st!=="pass"?`<br><span class="hint">${esc(x.note)}</span>`:""}</td></tr>`).join("")}</tbody></table></div>`;}).join("")
+      :`<p>Not yet available. The admission register and case sheet have not been photographed.</p>`}</section>
+
+    <section><h2>4. Home visit</h2>${v.status==="done"?`<div class="tablewrap"><table class="kv"><tbody>
+      <tr><th scope="row">${q.admitted}</th><td>${v.admitted==="yes"?"Yes":"No"}</td></tr>
+      <tr><th scope="row">${q.stay}</th><td>${v.stay===""||v.stay==null?"Not answered":`${v.stay} day(s) (record shows ${n} night${n===1?"":"s"})`}</td></tr>
+      <tr><th scope="row">Money paid to the hospital</th><td>${Number(v.paid)>0?`<b class="tf">${inr(v.paid)}</b> (not allowed under a cashless scheme)`:"Nothing"}</td></tr>
+      <tr><th scope="row">${q.papers}</th><td>${v.papers==="yes"?"Yes":v.papers==="no"?"No":"Not asked"}</td></tr>
+      ${v.notes?`<tr><th scope="row">Auditor’s notes</th><td>${esc(v.notes)}</td></tr>`:""}
+      <tr><th scope="row">Consent for photos</th><td>${consentOf(c.id)?"Recorded":"Not recorded"}</td></tr></tbody></table></div>`
+      :`<p>Not done yet. The patient has not been visited at home.</p>`}</section>
+
+    ${pend.length?`<section><h2>5. Outstanding evidence</h2><ul>${pend.map(k=>`<li>${esc(OUTSTANDING[k.group]||k.detail)}</li>`).join("")}</ul>
+      <p class="hint">A final decision should wait until these are collected, unless the failed checks above are enough on their own.</p></section>`
+      :`<section><h2>5. Outstanding evidence</h2><p>None. All evidence has been collected.</p></section>`}
+
+    <section><h2>6. Photo evidence</h2>${ph.length?`<p class="hint" style="margin-bottom:8px">${ph.length} photo${ph.length>1?"s":""}, each stamped with time, location and auditor, and fingerprinted to detect reuse.</p>
+      <div class="rphotos">${ph.map((p,i)=>`<figure><img src="${esc(p.src)}" alt="${esc(slotOf(p.slot).label)}"><figcaption><b>P${i+1}. ${esc(slotOf(p.slot).label)}</b><br>${stampText(c,p)}<br>Fingerprint ${esc(String(p.hash).slice(0,10))}</figcaption></figure>`).join("")}</div>`
+      :`<p>No photos taken yet.</p>`}</section>
+
+    <section><h2>7. Decision</h2><div class="tablewrap"><table class="kv"><tbody>
+      <tr><th scope="row">Suggested by ClaimSure</th><td>${esc(sg.v)}. ${esc(sg.why)}</td></tr>
+      <tr><th scope="row">Auditor’s decision</th><td>${dec?`<b>${esc(dec.verdict)}</b>`:"Not recorded yet"}</td></tr>
+      ${dec?`<tr><th scope="row">Reason</th><td>${esc(dec.note||"Not given")}</td></tr><tr><th scope="row">Decided by</th><td>${esc(dec.by||"Auditor")} on ${day(String(dec.at||"").slice(0,10))}</td></tr>`:""}
+      ${aq.amt?`<tr><th scope="row">Amount questioned</th><td>${inr(aq.amt)}. ${esc(aq.why)}.</td></tr>`:""}
+    </tbody></table></div></section>
+
+    <section><h2>8. Sign-off</h2><div class="signs">
+      <div class="sigbox"><b>Medical auditor</b><div class="sigline"><span>Name</span><i>${dec?esc(dec.by||""):""}</i></div><div class="sigline"><span>Registration no.</span><i></i></div><div class="sigline"><span>Signature</span><i></i></div><div class="sigline"><span>Date</span><i></i></div></div>
+      <div class="sigbox"><b>Reviewed by (audit manager)</b><div class="sigline"><span>Name</span><i></i></div><div class="sigline"><span>Designation</span><i></i></div><div class="sigline"><span>Signature</span><i></i></div><div class="sigline"><span>Date</span><i></i></div></div>
+    </div></section>
+
+    <section class="annex"><h2>About this report</h2>
+      <p><b>How the risk score works.</b> Each failed check adds 30 points, or 50 for fraud signals (patient denies treatment, reused images, edited files, identity mismatch, hospital pages that contradict the claim). Each item that needs a look adds 12. The score is capped at 100: 50 or more is high risk, 20 to 49 medium, under 20 low.</p>
+      <p><b>Who decides.</b> ClaimSure flags problems and suggests an action. A qualified medical auditor reviews the evidence and makes every decision.</p>
+      <p><b>Evidence handling.</b> Photos are stamped with time, the auditor’s location and name, and fingerprinted (SHA-256) so reused images are detected. Hospital pages are read automatically and can be corrected by the auditor; corrections are marked in section 3. Only masked Aadhaar numbers are recorded.</p>
+      <p><b>Demo notice.</b> This report was produced from made-up sample data. Package rates are illustrative, not official.</p>
+    </section>
+    <p class="dfoot">Confidential: contains patient health information. Share only with authorised staff of the scheme, insurer or audit agency.</p>
   </article>`;
 }
 
