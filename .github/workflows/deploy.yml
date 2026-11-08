@@ -9,15 +9,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Deploy with Wrangler 4
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -o pipefail
           if ! npx -y wrangler@4 deploy 2>&1 | tee deploy.log; then
@@ -25,3 +25,11 @@ jobs:
             exit 1
           fi
           grep -Eo 'https://[^ ]+workers\.dev' deploy.log | head -1 | sed 's/^/::notice::Live at /'
+      - name: Sync login secrets
+        env:
+          USERS: ${{ secrets.USERS }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        run: |
+          if [ -z "$USERS" ] || [ -z "$SESSION_SECRET" ]; then echo "::warning::USERS or SESSION_SECRET repo secret missing; sign-in will be off"; exit 0; fi
+          printf '%s' "$USERS" | npx -y wrangler@4 secret put USERS
+          printf '%s' "$SESSION_SECRET" | npx -y wrangler@4 secret put SESSION_SECRET
