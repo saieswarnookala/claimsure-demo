@@ -29,7 +29,9 @@ jobs:
         env:
           USERS: ${{ secrets.USERS }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$USERS" ] || [ -z "$SESSION_SECRET" ]; then echo "::warning::USERS or SESSION_SECRET repo secret missing; sign-in will be off"; exit 0; fi
           printf '%s' "$USERS" | npx -y wrangler@4 secret put USERS
           printf '%s' "$SESSION_SECRET" | npx -y wrangler@4 secret put SESSION_SECRET
+          if [ -n "$ANTHROPIC_API_KEY" ]; then printf '%s' "$ANTHROPIC_API_KEY" | npx -y wrangler@4 secret put ANTHROPIC_API_KEY; fi

@@ -38,6 +38,20 @@ Storage switches itself:
 
 3. Push. The app detects the bucket (`/api/photos/status`) and starts uploading. No app code changes.
 
+## Reading the register and case sheet
+Photos in the "Admission register" and "Case sheet" slots are read automatically and compared with the claim
+(name, age, sex, admission and discharge dates, diagnosis including left/right/both sides, procedure, doctor).
+Auditors can correct a misread; the check re-runs.
+
+The reader switches itself:
+- **Now:** text recognition in the browser (Tesseract.js). Good for printed pages, weak on handwriting.
+- **With `ANTHROPIC_API_KEY` set:** the Worker sends the page to Claude, which reads handwriting and Telugu.
+  Add the key as a repo secret; the deploy copies it to Cloudflare. Optional `READER_MODEL` overrides the model.
+  Use only sample data until a data-processing agreement is in place.
+
+"Add sample photos (demo)" generates register and case-sheet pages from the sample data, with planted
+problems in cases 004 (different patient), 008 (right knee vs both knees) and 011 (age 54 vs 34).
+
 ## Run locally
 Create `.dev.vars` with `USERS=...` and `SESSION_SECRET=...`, then:
 

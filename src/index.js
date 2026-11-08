@@ -126,7 +126,7 @@ const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 async function photosApi(request, env, session, url) {
   const p = url.pathname;
-  if (p === "/api/photos/status") return json({ enabled: !!env.PHOTOS });
+  if (p === "/api/photos/status") return json({ enabled: !!env.PHOTOS, reader: !!env.ANTHROPIC_API_KEY });
   if (!env.PHOTOS) return json({ error: "Cloud photo storage isn’t connected yet." }, 503);
 
   if (p === "/api/photos" && request.method === "GET") {
@@ -158,7 +158,7 @@ async function photosApi(request, env, session, url) {
       id, caseId: meta.caseId, slot: meta.slot, hash: meta.hash,
       time: String(meta.time || new Date().toISOString()).slice(0, 40),
       lat: num(meta.lat), lng: num(meta.lng), acc: num(meta.acc),
-      auditor: session.name, username: session.username, size: file.size,
+      auditor: session.name, username: session.username, size: file.size, sample: meta.sample === true,
       uploaded: new Date().toISOString(),
     };
     await env.PHOTOS.put(id, await file.arrayBuffer(), {
@@ -183,6 +183,55 @@ async function photosApi(request, env, session, url) {
     }
   }
   return json({ error: "Not found." }, 404);
+}
+
+// ---------- AI page reading (works once ANTHROPIC_API_KEY is set) ----------
+function toBase64(buf) {
+  const b = new Uint8Array(buf);
+  let s = "";
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+async function readDocument(request, env) {
+  if (!env.ANTHROPIC_API_KEY) return json({ error: "AI page reading isn’t connected yet." }, 503);
+  if (request.method !== "POST") return json({ error: "Not found." }, 404);
+  const form = await request.formData();
+  const file = form.get("file");
+  const kind = form.get("kind") === "casesheet" ? "case sheet or operation notes" : "in-patient admission register page";
+  if (!(file instanceof File) || !/^image\/(jpeg|png)$/.test(file.type) || file.size > 4_000_000) {
+    return json({ error: "Send one JPEG or PNG under 4 MB." }, 400);
+  }
+  const prompt =
+    `This is a photo of an Indian hospital ${kind}. It may be handwritten, printed, or in English or Telugu. ` +
+    `Extract the main patient entry. Reply with only a JSON object with keys: name, age (number), gender ("M" or "F"), ` +
+    `admit (YYYY-MM-DD), discharge (YYYY-MM-DD), diagnosis, procedure, doctor. Translate Telugu to English. ` +
+    `Use null for anything you can't read clearly. Don't guess.`;
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: env.READER_MODEL || "claude-sonnet-5-5",
+      max_tokens: 600,
+      messages: [{ role: "user", content: [
+        { type: "image", source: { type: "base64", media_type: file.type, data: toBase64(await file.arrayBuffer()) } },
+        { type: "text", text: prompt },
+      ] }],
+    }),
+  });
+  if (!r.ok) return json({ error: "The AI reader couldn’t read this page. Try again." }, 502);
+  const data = await r.json();
+  const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+  let f;
+  try { f = JSON.parse(text.replace(/```json|```/g, "").trim()); } catch { return json({ error: "The AI reader returned something unexpected. Try again." }, 502); }
+  const str = (v) => (v == null ? "" : String(v).slice(0, 200));
+  const iso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : "");
+  const age = Number(f.age);
+  return json({ fields: {
+    name: str(f.name), age: f.age == null || f.age === "" || !Number.isFinite(age) ? null : age,
+    gender: /^f/i.test(f.gender || "") ? "F" : /^m/i.test(f.gender || "") ? "M" : "",
+    admit: iso(f.admit), discharge: iso(f.discharge),
+    diagnosis: str(f.diagnosis), procedure: str(f.procedure), doctor: str(f.doctor),
+  } });
 }
 
 export default {
@@ -232,6 +281,11 @@ export default {
     if (path === "/api/me") {
       if (!session) return Response.json({ error: "Not signed in" }, { status: 401, headers: { "Cache-Control": "no-store" } });
       return Response.json(session, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (path === "/api/read-document") {
+      if (!session) return json({ error: "Not signed in" }, 401);
+      return readDocument(request, env);
     }
 
     if (path.startsWith("/api/photos")) {
