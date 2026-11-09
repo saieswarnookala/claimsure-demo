@@ -330,6 +330,10 @@ dialog#importer{border:0;border-radius:14px;padding:22px 24px;width:min(960px,96
 .imp-list{margin:0;padding-left:18px;font-size:14px;display:grid;gap:4px}
 .qtools{display:flex;gap:10px;align-items:center;padding:12px 14px 0;flex-wrap:wrap}.qtools:empty{display:none}
 .qtools .hint{font-size:13px}
+.tag.nha{background:var(--brand-soft);color:var(--brand);margin-left:6px}
+.doclist{display:flex;flex-wrap:wrap;gap:6px}
+.docitem{font-size:13.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
+.docitem.ok{color:var(--pass)}.docitem.no{color:var(--fail);border-color:var(--fail);font-weight:700}.docitem.wait{color:var(--pending)}
 .qreason{display:block;font-size:12.5px;color:var(--accent);margin-top:2px}
 dialog#viewer img{max-width:100%;max-height:70vh;display:block;margin:0 auto 10px;border-radius:6px}
 dialog#viewer p{font-size:14px;color:var(--muted);margin:0 0 12px}
@@ -424,6 +428,16 @@ const PKG = {
   CAT:{code:"OP004",name:"Cataract surgery (SICS with IOL)",rate:6000,minStay:0},
   PNM:{code:"MG014",name:"Pneumonia, medical management",rate:18000,minStay:4}
 };
+/* Diagnosis words that support each package (package/diagnosis fit, NHA trigger on higher-priced packages) */
+const PKG_FIT={SG039:/gall ?stone|cholecyst|cholelith|biliary colic/i,OG012:/labou?r|pregnan|lscs|caesar|cesar|obstruct|fetal|foetal|breech|pre-?eclampsia|placenta|cephalo/i,
+  OR021:/osteo ?arthritis|arthritis|knee/i,SG021:/appendic/i,OP004:/cataract/i,MG014:/pneumonia|lrti|lower respiratory|chest infection/i};
+/* Documents a claim must carry (NHA: claims with missing reports are suspicious; on-bed photo mandatory) */
+const DOC_COMMON=[["Discharge summary",/discharge summary/i],["Final bill",/bill/i],["On-bed patient photo",/on-?bed/i]];
+const SURG=[["Operation notes",/operation|operative/i],["Anaesthesia notes",/anaesthe|anesthe/i]];
+const REQ_DOCS={SG039:[...SURG,["Histopathology report",/histopath/i]],SG021:[...SURG,["Histopathology report",/histopath/i]],
+  OR021:[...SURG,["Implant invoice and sticker",/implant/i],["Post-op X-ray",/post-?op x-?ray/i]],OG012:[...SURG,["Baby birth record",/birth/i]],
+  OP004:[["Operation notes",/operation|operative/i],["IOL sticker",/iol/i]],MG014:[["Chest X-ray",/chest x-?ray/i],["Lab report",/lab/i]]};
+const requiredDocs=code=>DOC_COMMON.concat(REQ_DOCS[String(code||"").toUpperCase()]||[]);
 const H = {
   tung:"Tungabhadra Care Hospital, Kurnool",
   kon:"Konda Multispeciality, Nandyal",
@@ -437,8 +451,12 @@ function base(o){
   const p=o.patient, d=o.dates;
   const hr=Object.assign({name:p.name,age:p.age,gender:p.gender,aadhaar:p.aadhaar,diagnosis:o.diagnosis,procedure:o.pkg.name,admit:d.admit,discharge:d.discharge,doctor:o.doctor,billAmount:o.claimAmount},o.hr||{});
   const pd=Object.assign({name:p.name,age:p.age,gender:p.gender,diagnosis:o.diagnosis,procedure:o.pkg.name,admit:d.admit,discharge:d.discharge,doctor:o.doctor},o.pd||{});
-  const files=(o.files||[]).concat([]);
-  return Object.assign({},o,{hospitalRecord:hr,patientDocs:pd,files});
+  const files=(o.files||[]).concat([]),skip=o.missingDocs||[];
+  requiredDocs(o.pkg.code).forEach(([label,re])=>{if(skip.includes(label)||files.some(f=>re.test(f.name)))return;
+    const photo=/photo|x-?ray|sticker/i.test(label);
+    files.push({name:label+(photo?".jpg":".pdf"),producer:photo?"Camera":"Hospital HMIS",created:"",modified:"",hash:label.toLowerCase().replace(/\W+/g,"-")+"-"+o.id,stamp:null});});
+  const rules0=o.rules0||(o.visit&&o.visit.status==="done"?{hist:"yes",ehr:"yes",csec:"yes"}:{});
+  return Object.assign({bio:{admit:true,discharge:true},pharmacy:[]},o,{hospitalRecord:hr,patientDocs:pd,files,rules0});
 }
 function stdFiles(id,extra){
   return [
@@ -461,6 +479,7 @@ const CLAIMS = [
  base({id:"AP-2611-003",scenario:"Reused X-ray",patient:{name:"Shaik Basha",age:61,gender:"M",aadhaar:"1957"},village:"Yemmiganur",district:"Kurnool",hospital:H.sri,pkg:PKG.TKR,diagnosis:"Osteoarthritis, right knee",doctor:"Dr. K. Naidu",claimAmount:78000,
    dates:{admit:"2026-10-12",surgery:"2026-10-13",discharge:"2026-10-17",bill:"2026-10-17",lab:"2026-10-12"},
    files:stdFiles("003",{"Pre-op image.jpg":{name:"Knee X-ray.jpg",hash:"xr-9f3a"}}),
+   pharmacy:[{no:"SNH/PH/4411",date:"2026-10-12",amount:6420},{no:"SNH/PH/4412",date:"2026-10-14",amount:3890},{no:"SNH/PH/4413",date:"2026-10-15",amount:2750},{no:"SNH/PH/4414",date:"2026-10-17",amount:1980}],
    visit:{status:"pending"}}),
  base({id:"AP-2611-004",scenario:"Ghost patient",patient:{name:"Padma Kumari",age:38,gender:"F",aadhaar:"6644"},village:"Alur",district:"Kurnool",hospital:H.kon,pkg:PKG.PNM,diagnosis:"Community-acquired pneumonia",doctor:"Dr. S. Reddy",claimAmount:17800,
    dates:{admit:"2026-10-15",surgery:"",discharge:"2026-10-20",bill:"2026-10-20",lab:"2026-10-15"},
@@ -469,7 +488,7 @@ const CLAIMS = [
    visit:{status:"done",admitted:"no",stay:0,paid:0,papers:"no",notes:"Patient says she was never admitted. Says hospital staff took her Ayushman card copy at a health camp."}}),
  base({id:"AP-2611-005",scenario:"Lab date after discharge",patient:{name:"Ramesh Goud",age:29,gender:"M",aadhaar:"3088"},village:"Banaganapalle",district:"Nandyal",hospital:H.tung,pkg:PKG.APP,diagnosis:"Acute appendicitis",doctor:"Dr. R. Prasad",claimAmount:21500,
    dates:{admit:"2026-10-18",surgery:"2026-10-18",discharge:"2026-10-20",bill:"2026-10-20",lab:"2026-10-24"},
-   files:stdFiles("005"),
+   files:stdFiles("005"),missingDocs:["Histopathology report"],
    visit:{status:"done",admitted:"yes",stay:2,paid:0,papers:"yes",notes:""}}),
  base({id:"AP-2611-006",scenario:"Cash charged to patient",patient:{name:"Anjali Rani",age:24,gender:"F",aadhaar:"9172"},village:"Adoni",district:"Kurnool",hospital:H.sri,pkg:PKG.LSCS,diagnosis:"Obstructed labour",doctor:"Dr. M. Swathi",claimAmount:15000,
    dates:{admit:"2026-10-21",surgery:"2026-10-21",discharge:"2026-10-24",bill:"2026-10-24",lab:"2026-10-21"},
@@ -481,7 +500,7 @@ const CLAIMS = [
    visit:{status:"pending"}}),
  base({id:"AP-2611-008",scenario:"Above package rate",patient:{name:"Chinna Obulesu",age:58,gender:"M",aadhaar:"5530"},village:"Dhone",district:"Nandyal",hospital:H.god,pkg:PKG.TKR,diagnosis:"Osteoarthritis, both knees",doctor:"Dr. P. Varma",claimAmount:115000,
    dates:{admit:"2026-10-25",surgery:"2026-10-26",discharge:"2026-10-31",bill:"2026-10-31",lab:"2026-10-25"},
-   files:stdFiles("008"),
+   files:stdFiles("008"),bio:{admit:true,discharge:false},
    visit:{status:"done",admitted:"yes",stay:6,paid:0,papers:"yes",notes:"One knee operated, per patient."}}),
  base({id:"AP-2611-009",scenario:"Stamp doesn’t match",patient:{name:"Fathima Bee",age:44,gender:"F",aadhaar:"8406"},village:"Atmakur",district:"Nandyal",hospital:H.god,pkg:PKG.LCH,diagnosis:"Gallstones",doctor:"Dr. P. Varma",claimAmount:39000,
    dates:{admit:"2026-10-26",surgery:"2026-10-27",discharge:"2026-10-29",bill:"2026-10-29",lab:"2026-10-26"},
@@ -495,11 +514,15 @@ const CLAIMS = [
    dates:{admit:"2026-10-29",surgery:"2026-10-29",discharge:"2026-10-31",bill:"2026-10-31",lab:"2026-10-29"},
    pd:{name:"Gangamma",age:54},
    hr:{aadhaar:"2390"},
-   files:stdFiles("011"),
+   files:stdFiles("011",{"Discharge summary.pdf":{copy:"colour"}}),
    visit:{status:"done",admitted:"yes",stay:2,paid:0,papers:"yes",notes:"Woman met at home looks older than 34; her papers say 54."}}),
  base({id:"AP-2611-012",scenario:"Clean, visit pending",patient:{name:"Hari Krishna",age:33,gender:"M",aadhaar:"6021"},village:"Kallur",district:"Kurnool",hospital:H.god,pkg:PKG.APP,diagnosis:"Acute appendicitis",doctor:"Dr. P. Varma",claimAmount:21000,
    dates:{admit:"2026-11-01",surgery:"2026-11-01",discharge:"2026-11-03",bill:"2026-11-03",lab:"2026-11-01"},
    files:stdFiles("012"),
+   visit:{status:"pending"}}),
+ base({id:"AP-2611-013",scenario:"Same patient, two hospitals",patient:{name:"Venkata Ramana",age:52,gender:"M",aadhaar:"7310"},village:"Gudur",district:"Kurnool",hospital:H.god,pkg:PKG.PNM,diagnosis:"Acute gastroenteritis",doctor:"Dr. P. Varma",claimAmount:17900,
+   dates:{admit:"2026-10-09",surgery:"",discharge:"2026-10-13",bill:"2026-10-13",lab:"2026-10-09"},
+   files:stdFiles("013"),
    visit:{status:"pending"}})
 ];
 
@@ -719,20 +742,21 @@ async function readPhoto(c,p,blob){
 /* ---------- Clients and rule sets ---------- */
 /* The rule set belongs to the client. An admin sets it once; auditors never choose it. */
 const RULESETS={
-  nha:{name:"NHA default",desc:"PM-JAY desk audit, field investigation and home visit",questions:[]},
+  nha:{name:"NHA default",desc:"PM-JAY desk audit, field investigation and home visit",questions:[
+    {id:"hist",text:"Case sheet records complaints and history",basis:"NHA trigger: incomplete medical history",ask:"Does the case sheet record the patient’s complaints and history, not just the treatment given?",applies:()=>true}]},
   ap:{name:"Andhra Pradesh",desc:"Dr NTR Vaidya Seva Trust rules",questions:[
     {id:"ehr",text:"Health record and ABHA ID existed before the procedure",ask:"Did the hospital have an electronic health record and ABHA ID for this patient before the procedure?",applies:()=>true},
     {id:"csec",text:"C-section has a recorded medical reason",ask:"Does the case sheet record a medical reason for the C-section, such as fetal distress or failed labour?",applies:c=>/caesar|cesar|lscs|c-?section/i.test(c.pkg.name)||c.pkg.code==="OG012"}]},
   ts:{name:"Telangana",desc:"Aarogyasri rules, still being researched",questions:[]}
 };
 const CLIENTS=[
-  {id:"ap-trust",name:"Dr NTR Vaidya Seva Trust",scheme:"AB PM-JAY · Dr. NTR Vaidya Seva",state:"Andhra Pradesh",rules:["nha","ap"]},
+  {id:"ap-trust",name:"Dr NTR Vaidya Seva Trust",scheme:"AB PM-JAY · Dr. NTR Vaidya Seva",state:"Andhra Pradesh",rules:["nha","ap"],watchlist:["Srinivasa Nursing Home, Adoni"]},
   {id:"ts-trust",name:"Aarogyasri Health Care Trust",scheme:"AB PM-JAY · Aarogyasri",state:"Telangana",rules:["nha","ts"]},
   {id:"nha",name:"National Health Authority",scheme:"AB PM-JAY",state:"All states",rules:["nha"]}
 ];
 const clientOf=c=>CLIENTS.find(x=>x.id===(c.client||"ap-trust"))||CLIENTS[0];
 const rulesText=cl=>cl.rules.map(r=>RULESETS[r].name).join(" + ");
-const ruleAnswers=id=>(saved[id]&&saved[id].rules)||{};
+const ruleAnswers=id=>(saved[id]&&saved[id].rules)||((CLAIMS.find(c=>c.id===id)||{}).rules0)||{};
 function ruleQuestions(c){return clientOf(c).rules.flatMap(r=>RULESETS[r].questions.filter(q=>q.applies(c)).map(q=>Object.assign({set:r},q)));}
 const missingRules=c=>ruleQuestions(c).filter(q=>!ruleAnswers(c.id)[q.id]);
 
@@ -749,6 +773,7 @@ function makeClaim(r){
     patient:{name:r.name,age:r.age,gender:r.gender,aadhaar:r.aadhaar||""},village:r.village||"",district:r.district||"",
     hospital:r.hospital,pkg,diagnosis:r.diagnosis||"",doctor:r.doctor||"",claimAmount:r.amount,
     dates:{admit:r.admit,surgery:r.surgery||"",discharge:r.discharge},files:[],visit:{status:"pending"},
+    benId:r.benId||"",familyId:r.familyId||"",pharmacy:[],bio:(r.bioAdmit==null&&r.bioDischarge==null)?null:{admit:r.bioAdmit,discharge:r.bioDischarge},
     hospitalRecord:{name:"",age:"",gender:"",aadhaar:"",diagnosis:"",procedure:"",admit:"",discharge:"",doctor:"",billAmount:r.billAmount==null?"":r.billAmount},
     patientDocs:{name:"",age:"",gender:"",diagnosis:"",procedure:"",admit:"",discharge:"",doctor:""}};
 }
@@ -775,7 +800,11 @@ const IMPORT_FIELDS=[
   {k:"discharge",label:"Discharge date",req:1,al:["discharge date","date of discharge","dod","discharged on"]},
   {k:"amount",label:"Amount claimed (₹)",req:1,al:["claim amount","amount claimed","claimed amount","claim amt","amount"]},
   {k:"billAmount",label:"Hospital bill (₹)",al:["bill amount","hospital bill","bill amt","ledger amount"]},
-  {k:"reason",label:"Reason for audit",al:["audit reason","reason for audit","reason","trigger","flag"]}
+  {k:"reason",label:"Reason for audit",al:["audit reason","reason for audit","reason","trigger","flag"]},
+  {k:"benId",label:"Beneficiary ID (PM-JAY or ABHA)",al:["beneficiary id","pmjay id","pm jay id","pmjay card","abha","abha id","card no","card number"]},
+  {k:"familyId",label:"Family ID",al:["family id","family card","ration card","ration card no","household id"]},
+  {k:"bioAdmit",label:"Biometric at admission (Y/N)",al:["biometric at admission","admission biometric","bio admission","biometric admit"]},
+  {k:"bioDischarge",label:"Biometric at discharge (Y/N)",al:["biometric at discharge","discharge biometric","bio discharge","biometric discharge"]}
 ];
 const normH=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 function autoMap(headers){
@@ -830,7 +859,9 @@ function checkRows(table,map,clientId){
     const age=Number(str("age"));if(str("age")==="")errs.push("No age.");else if(!Number.isInteger(age)||age<0||age>120)errs.push(`Age “${str("age")}” isn’t a whole number between 0 and 120.`);else r.age=age;
     const sx=str("gender");r.gender=/^(m|male)$/i.test(sx)?"M":/^(f|female)$/i.test(sx)?"F":/^(t|o|other|transgender)/i.test(sx)?"O":"";if(!r.gender)errs.push(`Sex “${sx}” should be M, F or Other.`);
     const ad=str("aadhaar").replace(/\D/g,"");if(ad.length>=12)masked++;r.aadhaar=ad.length>=4?ad.slice(-4):"";
-    ["village","district","hospital","diagnosis","doctor","reason","pkgName"].forEach(k=>r[k]=str(k));
+    ["village","district","hospital","diagnosis","doctor","reason","pkgName","benId","familyId"].forEach(k=>r[k]=str(k));
+    const yn=k=>{const s=str(k);return /^(y|yes|true|1|done|verified)$/i.test(s)?true:/^(n|no|false|0|not done|skipped)$/i.test(s)?false:null;};
+    r.bioAdmit=yn("bioAdmit");r.bioDischarge=yn("bioDischarge");
     if(!r.hospital)errs.push("No hospital.");
     r.pkgCode=str("pkgCode").toUpperCase();if(!r.pkgCode)errs.push("No package code.");
     const rate=money(g("pkgRate"));if(Number.isNaN(rate))errs.push(`Package rate “${str("pkgRate")}” isn’t a number.`);else r.pkgRate=rate;
@@ -935,11 +966,61 @@ function removeBatch(id){
 /* ---------- Checks ---------- */
 const hashIndex={};
 CLAIMS.forEach(c=>c.files.forEach(f=>{(hashIndex[f.hash]=hashIndex[f.hash]||[]).push(c.id);}));
-const TAB_FOR={"Date logic":"docs","Medical logic":"docs","Identity":"docs","Cross-check":"docs","Billing":"docs","File tampering":"docs","Visual consistency":"docs","Duplicates":"docs","Page reading":"field","Visit evidence":"field","Home visit":"field","State rules":"field"};
-const CRITICAL=["Home visit","Duplicates","File tampering","Identity","Page reading"];
+const TAB_FOR={"Date logic":"docs","Medical logic":"docs","Identity":"docs","Cross-check":"docs","Billing":"docs","File tampering":"docs","Visual consistency":"docs","Duplicates":"docs","Page reading":"field","Visit evidence":"field","Home visit":"field","Scheme rules":"field","Concurrent claims":"docs","Claim history":"docs","Watch list":"docs","Package fit":"docs","Mandatory documents":"docs","Biometric":"docs","Document red flags":"docs"};
+const CRITICAL=["Home visit","Duplicates","File tampering","Identity","Page reading","Concurrent claims","Document red flags"];
+/* Basis shown next to every check, so reviewers know where each rule comes from */
+const BASIS={"Date logic":"ClaimSure","Medical logic":"ClaimSure","Identity":"NHA beneficiary verification","Cross-check":"ClaimSure","Billing":"NHA package rates",
+  "File tampering":"ClaimSure","Visual consistency":"ClaimSure","Duplicates":"ClaimSure","Page reading":"ClaimSure","Visit evidence":"ClaimSure","Home visit":"NHA beneficiary audit",
+  "Concurrent claims":"NHA trigger: same beneficiary in two places at once","Claim history":"NHA triggers: regular claim history; excessive use in a family",
+  "Watch list":"NHA trigger: hospital on watch list","Package fit":"NHA trigger: higher-priced package blocked","Mandatory documents":"NHA trigger: missing reports; on-bed photo",
+  "Biometric":"NHA: Aadhaar biometric at admission and discharge","Document red flags":"NHA anti-fraud guidelines: running-serial bills, colour copies"};
+const sameName=(a,b)=>{const n=s=>String(s||"").toLowerCase().replace(/[^a-z ]/g,"").split(" ").filter(w=>w.length>1).sort().join(" ");return n(a)!==""&&n(a)===n(b);};
+function sameBeneficiary(a,b){
+  if(a.benId&&b.benId)return a.benId===b.benId;
+  return !!a.patient.aadhaar&&a.patient.aadhaar===b.patient.aadhaar&&sameName(a.patient.name,b.patient.name)&&a.patient.gender===b.patient.gender&&Math.abs(Number(a.patient.age)-Number(b.patient.age))<=1;
+}
+const overlaps=(a,b)=>t(a.dates.admit)<=t(b.dates.discharge)&&t(b.dates.admit)<=t(a.dates.discharge);
+const within=(a,b,days)=>Math.abs(t(a.dates.admit)-t(b.dates.admit))<=days*864e5;
+function nhaChecks(c,add){
+  const others=CLAIMS.filter(o=>o.id!==c.id);
+  // same beneficiary, overlapping stays
+  const same=others.filter(o=>sameBeneficiary(c,o)),clash=same.filter(o=>overlaps(c,o));
+  add("Concurrent claims","Patient isn’t claimed in two places at once",clash.length?"fail":"pass",
+    clash.length?"The same patient has another claim for overlapping dates.":`No overlapping claims for this patient among ${CLAIMS.length} cases loaded.`,
+    clash.map(o=>`${o.hospital===c.hospital?"Also claimed at the same hospital":"Also admitted at "+o.hospital} (claim ${o.id}) from ${day(o.dates.admit)} to ${day(o.dates.discharge)}.`));
+  // repeat use by the patient and the family (12 months)
+  const hist=same.filter(o=>!overlaps(c,o)&&within(c,o,365)),hE=[];let hs="pass";
+  if(hist.length>=2){hs="warn";hE.push(`${hist.length+1} claims for this patient within 12 months (${hist.map(o=>o.id).join(", ")}).`);}
+  if(c.familyId){const fam=others.filter(o=>o.familyId===c.familyId&&within(c,o,365));
+    if(fam.length>=3){hs="warn";hE.push(`${fam.length+1} claims in this family within 12 months.`);}}
+  add("Claim history","Claim history is normal for this patient and family",hs,hs==="pass"?(hist.length?`${hist.length+1} claims for this patient in 12 months; within normal range.`:"No other claims for this patient in the cases loaded."):"Repeated use needs a look.",hE);
+  // hospital watch list (set by the client)
+  const wl=(clientOf(c).watchlist||[]).find(h=>normH(h)===normH(c.hospital));
+  add("Watch list","Hospital isn’t on the client’s watch list",wl?"warn":"pass",wl?"This hospital is on the client’s watch list.":"Not on the watch list.",wl?[`${c.hospital} is on ${clientOf(c).name}’s watch list. Review its claims more closely.`]:[]);
+  // package vs diagnosis (upcoding)
+  const fit=PKG_FIT[String(c.pkg.code).toUpperCase()];let fs,fd,fE=[];
+  if(!c.diagnosis){fs="pending";fd="No diagnosis in the claim data.";}
+  else if(!fit){fs="pass";fd=`No reference list for package ${c.pkg.code}; check by eye.`;}
+  else if(fit.test(c.diagnosis)){fs="pass";fd="The diagnosis supports the package booked.";}
+  else{fs="warn";fd="The diagnosis doesn’t support the package booked.";fE.push(`Diagnosis “${c.diagnosis}” doesn’t fit ${c.pkg.code} ${c.pkg.name} (${inr(c.pkg.rate)}). Possible higher-priced package.`);}
+  add("Package fit","Package matches the diagnosis",fs,fd,fE);
+  // mandatory documents
+  const req=requiredDocs(c.pkg.code),miss=req.filter(([,re])=>!c.files.some(f=>re.test(f.name))).map(([l])=>l);
+  if(!c.files.length)add("Mandatory documents","All required documents are in the claim","pending","No claim documents attached yet.",[]);
+  else add("Mandatory documents","All required documents are in the claim",miss.length?"warn":"pass",miss.length?`${miss.length} required document${miss.length>1?"s are":" is"} missing.`:`All ${req.length} required documents are present.`,miss.map(m=>`Missing: ${m}.`));
+  // biometric verification
+  if(c.bio){const bE=[];if(c.bio.admit===false)bE.push("No Aadhaar biometric at admission.");if(c.bio.discharge===false)bE.push("No Aadhaar biometric at discharge.");
+    add("Biometric","Aadhaar biometric done at admission and discharge",bE.length?"warn":"pass",bE.length?"Biometric verification was skipped. Check the exception reason.":"Biometric done at admission and discharge.",bE);}
+  // paperwork red flags
+  if(!c.files.length&&!(c.pharmacy||[]).length){add("Document red flags","Bills and papers look genuine","pending","No claim documents attached yet.",[]);return;}
+  const rE=[];let rs="pass",ph=(c.pharmacy||[]).map(b=>({...b,n:Number(String(b.no).replace(/^.*?(\d+)$/,"$1"))})).filter(b=>isFinite(b.n)).sort((a,b)=>a.n-b.n);
+  if(ph.length>=3&&ph[ph.length-1].n-ph[0].n===ph.length-1&&new Set(ph.map(b=>b.date)).size>1){rs="fail";rE.push(`${ph.length} pharmacy bills dated ${day(ph[0].date)} to ${day(ph[ph.length-1].date)} have running serial numbers (${ph[0].no} to ${ph[ph.length-1].no}). A busy pharmacy would show gaps; these look printed together.`);}
+  c.files.filter(f=>f.copy==="colour").forEach(f=>{if(rs==="pass")rs="warn";rE.push(`${f.name} is a colour photocopy, not an original.`);});
+  add("Document red flags","Bills and papers look genuine",rs,rs==="pass"?"No running-serial bills or photocopies found.":"Paperwork red flags found.",rE);
+}
 function runChecks(c){
   const out=[],d=c.dates,hr=c.hospitalRecord,pd=c.patientDocs,v=visitOf(c);
-  const add=(group,title,status,detail,evidence)=>out.push({group,title,status,detail,evidence:evidence||[]});
+  const add=(group,title,status,detail,evidence)=>out.push({group,title,status,detail,evidence:evidence||[],basis:BASIS[group]||"ClaimSure"});
 
   const de=[];let ds="pass";
   if(d.surgery&&t(d.surgery)<t(d.admit)){ds="fail";de.push(`Surgery (${day(d.surgery)}) is before admission (${day(d.admit)}).`);}
@@ -1019,7 +1100,9 @@ function runChecks(c){
 
   const ra=ruleAnswers(c.id);
   ruleQuestions(c).forEach(q=>{const a=ra[q.id],nm=RULESETS[q.set].name;
-    add("State rules",q.text,a==="yes"?"pass":a==="no"?"fail":"pending",a==="yes"?`Confirmed on the hospital visit (${nm} rule).`:a==="no"?`Not met. This is a ${nm} scheme rule.`:`${nm} rule. Answer it on the hospital visit.`,a==="no"?[q.ask.replace(/\?$/,"")+": no."]:[]);});
+    add("Scheme rules",q.text,a==="yes"?"pass":a==="no"?"fail":"pending",a==="yes"?`Confirmed on the hospital visit (${nm} rule).`:a==="no"?`Not met. This is a ${nm} scheme rule.`:`${nm} rule. Answer it on the hospital visit.`,a==="no"?[q.ask.replace(/\?$/,"")+": no."]:[]);});
+  nhaChecks(c,add);
+  ruleQuestions(c).forEach(q=>{const k=out.find(x=>x.group==="Scheme rules"&&x.title===q.text);if(k)k.basis=q.basis||(RULESETS[q.set].name+" scheme rule");});
   return out;
 }
 function score(checks){let s=0;checks.forEach(k=>{if(k.status==="fail")s+=CRITICAL.includes(k.group)?50:30;else if(k.status==="warn")s+=12;});return Math.min(100,s);}
@@ -1053,7 +1136,7 @@ function nextStep(c,st){
   if(dec){const nx=nextCase(c);return {done:true,t:`Decided: ${dec.verdict}.`,d:nx?`Next up: ${nx.patient.name} (risk ${stateOf(nx).score}).`:"That was the last open case.",label:nx?"Open next case":"",act:"next"};}
   const fails=st.checks.filter(k=>k.status==="fail").length,v=visitOf(c),miss=missingSlots(c);
   const mr=missingRules(c);
-  if(v.status!=="done"||miss.length||mr.length){const todo=[];if(v.status!=="done")todo.push("home visit answers");if(miss.length)todo.push(`${miss.length} required photo${miss.length>1?"s":""}`);if(mr.length)todo.push(`${mr.length} state rule question${mr.length>1?"s":""}`);
+  if(v.status!=="done"||miss.length||mr.length){const todo=[];if(v.status!=="done")todo.push("home visit answers");if(miss.length)todo.push(`${miss.length} required photo${miss.length>1?"s":""}`);if(mr.length)todo.push(`${mr.length} scheme rule question${mr.length>1?"s":""}`);
     return {t:fails?`${fails} problem${fails>1?"s":""} found. Confirm on the field visit.`:"The documents look fine. Confirm on the field visit.",d:`Still needed: ${todo.join(" and ")}.`,label:"Go to field visit",act:"field"};}
   return {t:"Evidence is complete. Record your decision.",d:`Suggested: ${suggest(st).v}.`,label:"Decide now",act:"decide"};
 }
@@ -1136,7 +1219,7 @@ const ICON={fail:"✕",warn:"!",pass:"✓",pending:"…"};
 function findCard(k){
   const tab=TAB_FOR[k.group];
   return `<div class="find"><span class="ico i-${k.status}" aria-hidden="true">${ICON[k.status]}</span>
-    <div><div class="t">${esc(k.title)}<span class="tag">${esc(k.group)}</span></div><div class="d">${esc(k.detail)}</div>
+    <div><div class="t">${esc(k.title)}<span class="tag">${esc(k.group)}</span>${/^NHA/.test(k.basis)?`<span class="tag nha" title="${esc(k.basis)}">NHA</span>`:/scheme rule$/.test(k.basis)?`<span class="tag nha" title="${esc(k.basis)}">${esc(k.basis.replace(/ scheme rule$/,""))}</span>`:""}</div><div class="d">${esc(k.detail)}</div>
     ${k.evidence.length?`<ul>${k.evidence.map(e=>`<li>${esc(e)}</li>`).join("")}</ul>`:""}</div>
     ${tab&&k.status!=="pass"?`<button class="link" data-tab="${tab}">${tab==="docs"?"See documents":"Go to field visit"}</button>`:"<span></span>"}</div>`;
 }
@@ -1159,12 +1242,22 @@ function docsView(c){
     <div class="tablewrap"><table><thead><tr><th>Field</th><th>Claim</th><th>Hospital record</th><th>Patient’s papers</th></tr></thead>
     <tbody>${rows.map(r=>`<tr><th scope="row">${r[0]}</th><td>${esc(r[1])}</td>${cell(r[2],r[1])}${cell(r[3],r[1])}</tr>`).join("")}</tbody></table></div>
     ${pages.length?`<div class="section"><h2>Read from the hospital’s pages</h2><div class="slots">${pages.map(p=>`<div class="slot wide"><div class="slot-h"><b>${esc(slotOf(p.slot).label)}</b></div>${readCard(c,p)}</div>`).join("")}</div></div>`:""}
+    ${docChecklist(c)}
     <div class="section"><h2>Files in the claim</h2>
     <div class="tablewrap"><table><thead><tr><th>File</th><th>Made with</th><th>Issued</th><th>Last edited</th><th>Stamp match</th><th>Fingerprint</th></tr></thead>
     <tbody>${c.files.length?"":`<tr><td colspan="6">No files attached yet. Imported cases start with the client’s case details only.</td></tr>`}${c.files.map(f=>`<tr><td>${esc(f.name)}</td><td class="${EDITORS.includes(f.producer)?"bad":""}">${esc(f.producer)}</td><td>${day(f.created)||"—"}</td><td>${day(f.modified)||"—"}</td><td class="${f.stamp!=null&&f.stamp<0.9?"bad":""}">${f.stamp==null?"—":Math.round(f.stamp*100)+"%"}</td><td class="${(hashIndex[f.hash]||[]).length>1?"bad":""}">${esc(f.hash)}</td></tr>`).join("")}</tbody></table></div>
     <p class="hint" style="margin-top:8px">In the full product these values come from scanning the uploaded files. Here they’re preset sample values.</p></div>`;
 }
 
+function docChecklist(c){
+  const req=requiredDocs(c.pkg.code),ph=c.pharmacy||[];
+  return `<div class="section"><h2>Required documents <span class="tag nha">NHA</span></h2>
+    <p class="hint" style="margin:0 0 8px">What a ${esc(c.pkg.name)} claim must carry.${c.files.length?"":" Imported cases start without documents."}</p>
+    <div class="doclist">${req.map(([l,re])=>{const f=c.files.find(x=>re.test(x.name));return `<span class="docitem ${f?"ok":c.files.length?"no":"wait"}">${f?"✓":c.files.length?"✕":"…"} ${esc(l)}</span>`;}).join("")}</div>
+    ${c.bio?`<p style="margin:10px 0 0">Aadhaar biometric: admission ${c.bio.admit===false?"<b class=\"tf\">not done</b>":c.bio.admit?"done":"unknown"}, discharge ${c.bio.discharge===false?"<b class=\"tf\">not done</b>":c.bio.discharge?"done":"unknown"}.</p>`:""}
+    ${ph.length?`<h3 style="margin:14px 0 6px;font-size:15px">Pharmacy bills</h3><div class="tablewrap"><table><thead><tr><th>Bill no.</th><th>Date</th><th>Amount</th></tr></thead><tbody>${ph.map(b=>`<tr><td>${esc(b.no)}</td><td>${day(b.date)}</td><td>${inr(b.amount)}</td></tr>`).join("")}</tbody></table></div>`:""}
+  </div>`;
+}
 function readCard(c,p){
   if(p.id in READING)return `<div class="readcard"><p class="rc-h"><span><span class="spin"></span>Reading the page…</span><span class="rc-m" data-progress="${esc(p.id)}">${READING[p.id]||0}%</span></p></div>`;
   const r=readsOf(c.id)[p.id];
@@ -1250,7 +1343,10 @@ const OUTSTANDING={
   "Cross-check":"The patient’s own discharge papers have not been collected yet.",
   "File tampering":"The claim documents (bills, discharge summary) have not been attached yet.",
   "Visual consistency":"The claim documents have not been attached yet, so stamps can’t be compared.",
-  "State rules":"A scheme rule question has not been answered yet."
+  "Scheme rules":"A scheme rule question has not been answered yet.",
+  "Mandatory documents":"The claim documents have not been attached yet, so required documents can’t be checked.",
+  "Document red flags":"The claim documents have not been attached yet, so bills can’t be checked.",
+  "Package fit":"The claim data has no diagnosis, so the package can’t be checked against it."
 };
 function amountQuestioned(c,st){
   const f=st.checks.filter(k=>k.status==="fail").map(k=>k.group);
@@ -1312,7 +1408,7 @@ function reportView(c,st){
     <section><h2>2. Checks performed</h2>
       <p class="hint" style="margin-bottom:8px">${st.checks.length} checks: ${st.checks.filter(k=>k.status==="pass").length} passed, ${warns.length} need a look, ${fails.length} failed, ${pend.length} waiting on evidence.</p>
       <div class="tablewrap"><table class="ct"><thead><tr><th>#</th><th>Check</th><th>Result</th><th>What was found</th></tr></thead><tbody>
-      ${st.checks.map((k,i)=>`<tr><td>${i+1}</td><td><b>${esc(k.title)}</b><br><span class="hint">${esc(k.group)}</span></td><td class="res ${RES[k.status][1]}">${RES[k.status][0]}</td><td>${checkText(k)}</td></tr>`).join("")}
+      ${st.checks.map((k,i)=>`<tr><td>${i+1}</td><td><b>${esc(k.title)}</b><br><span class="hint">${esc(k.basis||k.group)}</span></td><td class="res ${RES[k.status][1]}">${RES[k.status][0]}</td><td>${checkText(k)}</td></tr>`).join("")}
       </tbody></table></div></section>
 
     <section><h2>3. Hospital pages read</h2>${pages.length?pages.map(p=>{const r=readsOf(c.id)[p.id],rows=comparePage(c,p.slot,r.fields);
@@ -1351,7 +1447,8 @@ function reportView(c,st){
     </div></section>
 
     <section class="annex"><h2>About this report</h2>
-      <p><b>How the risk score works.</b> Each failed check adds 30 points, or 50 for fraud signals (patient denies treatment, reused images, edited files, identity mismatch, hospital pages that contradict the claim). Each item that needs a look adds 12. The score is capped at 100: 50 or more is high risk, 20 to 49 medium, under 20 low.</p>
+      <p><b>How the risk score works.</b> Each failed check adds 30 points, or 50 for fraud signals (patient denies treatment, reused images, edited files, identity mismatch, hospital pages that contradict the claim, the same patient claimed in two places at once, running-serial bills). Each item that needs a look adds 12. The score is capped at 100: 50 or more is high risk, 20 to 49 medium, under 20 low.</p>
+      <p><b>Basis.</b> Each check shows where its rule comes from: NHA’s anti-fraud guidelines and audit manual, the client’s scheme rules, or ClaimSure’s own document checks. Checks across claims (same patient in two places, repeat claims) only see the cases loaded into ClaimSure.</p>
       <p><b>Who decides.</b> ClaimSure flags problems and suggests an action. A qualified medical auditor reviews the evidence and makes every decision.</p>
       <p><b>Evidence handling.</b> Photos are stamped with time, the auditor’s location and name, and fingerprinted (SHA-256) so reused images are detected. Hospital pages are read automatically and can be corrected by the auditor; corrections are marked in section 3. Only masked Aadhaar numbers are recorded.</p>
       <p><b>Scheme rules.</b> This case was checked with ${esc(rulesText(clientOf(c)))} rules, set by the client, ${esc(clientOf(c).name)}.</p>

@@ -85,3 +85,18 @@ An audit manager can upload the client's case list as CSV or Excel (**Import cas
 Required columns: claim ID, patient name, age, sex, hospital, package code, admission date, discharge date, amount claimed. A blank template and a sample batch are in the import screen. Full Aadhaar numbers are cut to the last 4 digits on import.
 
 Imported cases are saved in the browser for now (like decisions), until server storage is added.
+
+## NHA checks
+
+Besides ClaimSure's own document checks, every case runs checks based on NHA's anti-fraud guidelines. Each check shows its basis (NHA, the client's scheme rule, or ClaimSure).
+
+- Same patient claimed in two places at once (overlapping stays): fraud signal
+- Claim history: 3+ claims by one patient, or 4+ in one family, within 12 months
+- Hospital on the client's watch list
+- Package fits the diagnosis (possible higher-priced package)
+- Required documents per package (histopathology, operation and anaesthesia notes, implant invoice, on-bed photo, and so on)
+- Aadhaar biometric at admission and discharge (when the client's export has it)
+- Paperwork red flags: pharmacy bills with running serial numbers (fraud signal), colour photocopies
+- Case sheet records complaints and history (answered on the hospital visit)
+
+Checks across claims only see the cases loaded into ClaimSure. Optional import columns: Beneficiary ID, Family ID, Biometric at admission, Biometric at discharge.
