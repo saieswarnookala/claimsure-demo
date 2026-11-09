@@ -330,6 +330,24 @@ dialog#importer{border:0;border-radius:14px;padding:22px 24px;width:min(960px,96
 .imp-list{margin:0;padding-left:18px;font-size:14px;display:grid;gap:4px}
 .qtools{display:flex;gap:10px;align-items:center;padding:12px 14px 0;flex-wrap:wrap}.qtools:empty{display:none}
 .qtools .hint{font-size:13px}
+.nhaform .formtab{display:grid;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 14px 14px}
+.nhaform h3{font-size:14.5px;margin:14px 0 2px;color:var(--brand)}
+.fq{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
+.fq:last-of-type{border-bottom:0}
+.fn{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--sunken);font-size:12.5px;font-weight:700;color:var(--muted)}
+.fq .ft{display:grid;gap:5px;font-size:14.5px;grid-column:span 1}
+.fq:not(:has(.fn)) .ft{grid-column:1/3}
+.sug{font-size:12.5px;padding:3px 8px;border-radius:6px;background:var(--brand-soft);color:var(--brand);justify-self:start}
+.sug.no{background:color-mix(in srgb,var(--fail) 10%,transparent);color:var(--fail)}
+.rmk{font:inherit;font-size:13.5px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);max-width:460px}
+.yn.sm label span{padding:6px 14px;font-size:14px;min-width:0}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;padding:10px 0}
+.fgrid label{display:grid;gap:4px;font-size:13px;color:var(--muted);font-weight:700}
+.fgrid input,.fgrid select{font:inherit;font-size:14.5px;font-weight:400;color:var(--ink);padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+#damt{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);max-width:220px}
+.report .annex{break-before:auto}
+.at td:first-child{width:auto}.at td:last-child{width:34%}.at th:last-child{width:34%}
+.report table.at{font-size:13px}
 .tag.nha{background:var(--brand-soft);color:var(--brand);margin-left:6px}
 .doclist{display:flex;flex-wrap:wrap;gap:6px}
 .docitem{font-size:13.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
@@ -438,6 +456,20 @@ const REQ_DOCS={SG039:[...SURG,["Histopathology report",/histopath/i]],SG021:[..
   OR021:[...SURG,["Implant invoice and sticker",/implant/i],["Post-op X-ray",/post-?op x-?ray/i]],OG012:[...SURG,["Baby birth record",/birth/i]],
   OP004:[["Operation notes",/operation|operative/i],["IOL sticker",/iol/i]],MG014:[["Chest X-ray",/chest x-?ray/i],["Lab report",/lab/i]]};
 const requiredDocs=code=>DOC_COMMON.concat(REQ_DOCS[String(code||"").toUpperCase()]||[]);
+const SURGICAL=["SG039","SG021","OR021","OG012","OP004"];
+/* Sample fact sheets (NHA Annexure 2.1), one per hospital visit */
+const FACTS0={
+  "Tungabhadra Care Hospital, Kurnool":{date:"2026-11-04",by:"Demo auditor",hospType:"Private",response:"Co-operative",tms:4,found:4,beds:{general:40,icu:6,hdu:4},ots:2,otTables:2,undertaking:"yes",signatory:"Dr. V. Rao, Medical Superintendent",a:{}},
+  "Konda Multispeciality, Nandyal":{date:"2026-11-05",by:"Demo auditor",hospType:"Private",response:"Co-operative",tms:3,found:3,beds:{general:30,icu:4,hdu:2},ots:2,otTables:2,undertaking:"yes",signatory:"Mr. K. Prasad, Administrator",a:{}},
+  "Srinivasa Nursing Home, Adoni":{date:"2026-11-06",by:"Demo auditor",hospType:"Private",response:"Indifferent",tms:6,found:2,beds:{general:20,icu:0,hdu:2},ots:1,otTables:1,undertaking:"no",signatory:"",a:{icu:"no",implantReg:"no",fumReg:"no",kioskEntrance:"no"}}
+};
+function sampleDesk(o){
+  const surg=SURGICAL.includes(o.pkg.code),n=Math.round((Date.parse(o.dates.discharge)-Date.parse(o.dates.admit))/864e5);
+  const miss=o.missingDocs||[];
+  return {d1:miss.length?"no":"yes",d2:"yes",d3:"yes",d4:"yes",d5:(PKG_FIT[o.pkg.code]||/./).test(o.diagnosis)?"yes":"no",d6:"yes",
+    d7:miss.some(m=>/histopath|post-op|iol|birth/i.test(m))?"no":"yes",d8:"yes",d9:n>=o.pkg.minStay?"yes":"no",d10:"yes",d11:"yes",
+    remarks:miss.length?{d1:"Missing: "+miss.join(", ")+".",d7:"Missing: "+miss.join(", ")+"."}:{}};
+}
 const H = {
   tung:"Tungabhadra Care Hospital, Kurnool",
   kon:"Konda Multispeciality, Nandyal",
@@ -455,8 +487,13 @@ function base(o){
   requiredDocs(o.pkg.code).forEach(([label,re])=>{if(skip.includes(label)||files.some(f=>re.test(f.name)))return;
     const photo=/photo|x-?ray|sticker/i.test(label);
     files.push({name:label+(photo?".jpg":".pdf"),producer:photo?"Camera":"Hospital HMIS",created:"",modified:"",hash:label.toLowerCase().replace(/\W+/g,"-")+"-"+o.id,stamp:null});});
-  const rules0=o.rules0||(o.visit&&o.visit.status==="done"?{hist:"yes",ehr:"yes",csec:"yes"}:{});
-  return Object.assign({bio:{admit:true,discharge:true},pharmacy:[]},o,{hospitalRecord:hr,patientDocs:pd,files,rules0});
+  const done=o.visit&&o.visit.status==="done";
+  const rules0=o.rules0||(done?{ehr:"yes",csec:"yes"}:{});
+  const desk0=o.noDesk?null:sampleDesk(o);
+  const surg=SURGICAL.includes(o.pkg.code);
+  const maf0=done?Object.assign({opdReg:"yes",ipdReg:"yes",labReg:"yes",ipdPapers:"yes",ipdJustify:"yes",nursing:"yes",doctorNotes:"yes",progress:"yes",treatment:"yes",dsComplete:"yes",lama:"no"},
+    surg?{otReg:"yes",otNotes:"yes",otConfirm:"yes",preAnaes:"yes"}:{},o.maf||{}):null;
+  return Object.assign({bio:{admit:true,discharge:true},pharmacy:[]},o,{hospitalRecord:hr,patientDocs:pd,files,rules0,desk0,maf0,sample:true});
 }
 function stdFiles(id,extra){
   return [
@@ -485,6 +522,7 @@ const CLAIMS = [
    dates:{admit:"2026-10-15",surgery:"",discharge:"2026-10-20",bill:"2026-10-20",lab:"2026-10-15"},
    pd:{name:"",diagnosis:"",procedure:"",admit:"",discharge:"",doctor:""},
    files:stdFiles("004"),
+   maf:{ipdReg:"no",ipdJustify:"no"},
    visit:{status:"done",admitted:"no",stay:0,paid:0,papers:"no",notes:"Patient says she was never admitted. Says hospital staff took her Ayushman card copy at a health camp."}}),
  base({id:"AP-2611-005",scenario:"Lab date after discharge",patient:{name:"Ramesh Goud",age:29,gender:"M",aadhaar:"3088"},village:"Banaganapalle",district:"Nandyal",hospital:H.tung,pkg:PKG.APP,diagnosis:"Acute appendicitis",doctor:"Dr. R. Prasad",claimAmount:21500,
    dates:{admit:"2026-10-18",surgery:"2026-10-18",discharge:"2026-10-20",bill:"2026-10-20",lab:"2026-10-24"},
@@ -493,7 +531,7 @@ const CLAIMS = [
  base({id:"AP-2611-006",scenario:"Cash charged to patient",patient:{name:"Anjali Rani",age:24,gender:"F",aadhaar:"9172"},village:"Adoni",district:"Kurnool",hospital:H.sri,pkg:PKG.LSCS,diagnosis:"Obstructed labour",doctor:"Dr. M. Swathi",claimAmount:15000,
    dates:{admit:"2026-10-21",surgery:"2026-10-21",discharge:"2026-10-24",bill:"2026-10-24",lab:"2026-10-21"},
    files:stdFiles("006"),
-   visit:{status:"done",admitted:"yes",stay:3,paid:15000,papers:"yes",notes:"Husband says hospital asked ₹15,000 cash for ‘medicines and blood’."}}),
+   visit:{status:"done",admitted:"yes",stay:3,paid:15000,purpose:"Medicines and blood",receipts:"no",papers:"yes",notes:"Husband says hospital asked ₹15,000 cash for ‘medicines and blood’."}}),
  base({id:"AP-2611-007",scenario:"Same X-ray as 003",patient:{name:"Narasimhulu",age:66,gender:"M",aadhaar:"2209"},village:"Kodumur",district:"Kurnool",hospital:H.sri,pkg:PKG.TKR,diagnosis:"Osteoarthritis, left knee",doctor:"Dr. K. Naidu",claimAmount:79500,
    dates:{admit:"2026-10-22",surgery:"2026-10-23",discharge:"2026-10-27",bill:"2026-10-27",lab:"2026-10-22"},
    files:stdFiles("007",{"Pre-op image.jpg":{name:"Knee X-ray.jpg",hash:"xr-9f3a"}}),
@@ -518,11 +556,11 @@ const CLAIMS = [
    visit:{status:"done",admitted:"yes",stay:2,paid:0,papers:"yes",notes:"Woman met at home looks older than 34; her papers say 54."}}),
  base({id:"AP-2611-012",scenario:"Clean, visit pending",patient:{name:"Hari Krishna",age:33,gender:"M",aadhaar:"6021"},village:"Kallur",district:"Kurnool",hospital:H.god,pkg:PKG.APP,diagnosis:"Acute appendicitis",doctor:"Dr. P. Varma",claimAmount:21000,
    dates:{admit:"2026-11-01",surgery:"2026-11-01",discharge:"2026-11-03",bill:"2026-11-03",lab:"2026-11-01"},
-   files:stdFiles("012"),
+   files:stdFiles("012"),noDesk:true,
    visit:{status:"pending"}}),
  base({id:"AP-2611-013",scenario:"Same patient, two hospitals",patient:{name:"Venkata Ramana",age:52,gender:"M",aadhaar:"7310"},village:"Gudur",district:"Kurnool",hospital:H.god,pkg:PKG.PNM,diagnosis:"Acute gastroenteritis",doctor:"Dr. P. Varma",claimAmount:17900,
    dates:{admit:"2026-10-09",surgery:"",discharge:"2026-10-13",bill:"2026-10-13",lab:"2026-10-09"},
-   files:stdFiles("013"),
+   files:stdFiles("013"),noDesk:true,
    visit:{status:"pending"}})
 ];
 
@@ -540,8 +578,23 @@ let saved={};
 try{saved=JSON.parse(localStorage.getItem(KEY)||"{}")||{};}catch(e){saved={};}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(saved));}catch(e){}}
 function setCase(id,patch){saved[id]=Object.assign({},saved[id],patch);persist();}
-const visitOf=c=>(saved[c.id]&&saved[c.id].visit)||c.visit;
-const decisionOf=c=>saved[c.id]&&saved[c.id].decision;
+const LEGACY_VERDICT={"Pass":"Dismiss (non-fraud)","Recover excess amount":"Process with partial amount","Refer to State Anti-Fraud Unit":"Confirm fraud and reject","Hold for more documents":"Send for field investigation"};
+const decisionOf=c=>{const d=saved[c.id]&&saved[c.id].decision;return d&&LEGACY_VERDICT[d.verdict]?Object.assign({},d,{verdict:LEGACY_VERDICT[d.verdict]}):d;};
+const isSurg=c=>SURGICAL.includes(String(c.pkg.code).toUpperCase())||!!c.dates.surgery;
+/* Home visit answers in NHA Annexure 4 shape; older answers and sample data are mapped onto it */
+function visitOf(c){
+  const raw=(saved[c.id]&&saved[c.id].visit)||c.visit||{status:"pending"};
+  if(raw.status!=="done")return Object.assign({status:"pending"},raw);
+  const v=Object.assign({},raw);
+  v.availed=raw.availed||raw.admitted||"";v.admitted=v.availed;
+  const paid=(raw.amount!=null&&raw.amount!=="")?Number(raw.amount):Number(raw.paid||0);
+  v.amount=paid;v.paid=paid;v.moneyAsked=raw.moneyAsked||(paid>0?"yes":"no");
+  v.dischargeSummary=raw.dischargeSummary||raw.papers||"";v.papers=v.dischargeSummary;
+  if(raw.pAdmit&&raw.pDischarge)v.stay=Math.round((Date.parse(raw.pDischarge)-Date.parse(raw.pAdmit))/864e5);
+  if(c.sample&&!raw.form&&v.availed==="yes"){const s=isSurg(c);
+    Object.assign(v,{sameHosp:v.sameHosp||"yes",surgery:v.surgery||(s?"yes":"no"),scar:v.scar||(s&&c.pkg.code!=="OP004"?"yes":""),food:v.food||"yes",postMeds:v.postMeds||"yes",ownCost:v.ownCost||"no",referred:v.referred||"no"});}
+  return v;
+}
 const readsOf=id=>(saved[id]&&saved[id].reads)||{};
 const consentOf=id=>!!(saved[id]&&saved[id].consent);
 
@@ -742,8 +795,7 @@ async function readPhoto(c,p,blob){
 /* ---------- Clients and rule sets ---------- */
 /* The rule set belongs to the client. An admin sets it once; auditors never choose it. */
 const RULESETS={
-  nha:{name:"NHA default",desc:"PM-JAY desk audit, field investigation and home visit",questions:[
-    {id:"hist",text:"Case sheet records complaints and history",basis:"NHA trigger: incomplete medical history",ask:"Does the case sheet record the patient’s complaints and history, not just the treatment given?",applies:()=>true}]},
+  nha:{name:"NHA default",desc:"PM-JAY desk audit, field investigation and home visit",questions:[]},
   ap:{name:"Andhra Pradesh",desc:"Dr NTR Vaidya Seva Trust rules",questions:[
     {id:"ehr",text:"Health record and ABHA ID existed before the procedure",ask:"Did the hospital have an electronic health record and ABHA ID for this patient before the procedure?",applies:()=>true},
     {id:"csec",text:"C-section has a recorded medical reason",ask:"Does the case sheet record a medical reason for the C-section, such as fetal distress or failed labour?",applies:c=>/caesar|cesar|lscs|c-?section/i.test(c.pkg.name)||c.pkg.code==="OG012"}]},
@@ -963,15 +1015,83 @@ function removeBatch(id){
   renderImporter();renderAll();toast("Batch removed.");
 }
 
+/* ---------- NHA forms (Field Investigation and Medical Audit Manual, April 2020) ---------- */
+const DESK_QS=[
+  {id:"d1",q:"Are all mandatory documents required at the time of pre-auth uploaded?"},
+  {id:"d2",q:"If uploaded, do these documents justify hospitalisation?"},
+  {id:"d3",q:"Are symptoms and diagnosis in sync?"},
+  {id:"d4",q:"Do diagnostic reports conclude the diagnosis?"},
+  {id:"d5",q:"Is the package booked in sync with the diagnosis?"},
+  {id:"d6",q:"Are admission notes and detailed findings at admission available?"},
+  {id:"d7",q:"Are requisite post-treatment evidentiary documents available to confirm complete, appropriate treatment?"},
+  {id:"d8",q:"Do the post-treatment evidentiary documents confirm that treatment was given?"},
+  {id:"d9",q:"Was the length of stay as per package specification?"},
+  {id:"d10",q:"Is a discharge summary available?"},
+  {id:"d11",q:"Does the discharge summary capture presenting features, investigations, treatment given during the stay and treatment advised at discharge?"}];
+const deskOf=c=>(saved[c.id]&&saved[c.id].desk)||c.desk0||null;
+const deskDone=c=>{const dk=deskOf(c);return !!dk&&DESK_QS.every(q=>dk[q.id]);};
+function deskSuggest(c){
+  const s={},req=requiredDocs(c.pkg.code),has=re=>c.files.some(f=>re.test(f.name));
+  if(c.files.length){
+    const miss=req.filter(([,re])=>!has(re)).map(([l])=>l);
+    s.d1=miss.length?{a:"no",why:"Missing: "+miss.join(", ")+"."}:{a:"yes",why:`All ${req.length} required documents are present.`};
+    const post=req.filter(([l])=>/histopath|post-op|iol|birth/i.test(l)),pm=post.filter(([,re])=>!has(re)).map(([l])=>l);
+    s.d7=pm.length?{a:"no",why:"Missing: "+pm.join(", ")+"."}:{a:"yes",why:post.length?post.map(([l])=>l).join(", ")+" present.":"Discharge summary and bill present."};
+    s.d10=has(/discharge summary/i)?{a:"yes",why:"Discharge summary is in the claim."}:{a:"no",why:"No discharge summary in the claim."};
+  }
+  const fit=PKG_FIT[String(c.pkg.code).toUpperCase()];
+  if(fit&&c.diagnosis)s.d5=fit.test(c.diagnosis)?{a:"yes",why:"Diagnosis supports the package."}:{a:"no",why:`“${c.diagnosis}” doesn’t fit ${c.pkg.name}.`};
+  const n=nights(c.dates.admit,c.dates.discharge);
+  if(n!=null)s.d9=(n>=0&&n>=(c.pkg.minStay||0))?{a:"yes",why:`${n} night${n===1?"":"s"}; package expects at least ${c.pkg.minStay||0}.`}:{a:"no",why:n<0?"Discharge is before admission.":`${n} night${n===1?"":"s"}; package expects at least ${c.pkg.minStay}.`};
+  return s;
+}
+const FACT_ITEMS=[
+  ["Infrastructure",[["signboard","Signboard outside showing the hospital is empanelled"],["kiosk","PMAM kiosk available"],["kioskEntrance","PMAM kiosk located at the entrance"],["boards","AB PM-JAY promotional boards displayed"],["regcert","Hospital registration certificate available"],["icu","ICU available"],["hdu","HDU available"],["bedgap","Distance maintained between two beds"],["otSterile","OT sterilisation facility functional"],["otLights","Adequate lights and air conditioning in each OT"],["bmw","Provision for biomedical waste"]]],
+  ["Human resource",[["rmo","RMO or duty doctor available at the time of visit"],["nurses","Qualified nursing staff available"],["techs","Technicians and pharmacists available"],["specialists","Specialists available for the claims booked"]]],
+  ["Medical documentation",[["ipdReg","IPD register available"],["otReg","OT register available"],["pharmReg","Pharmacy record available"],["labReg","Laboratory records available"],["fumReg","Fumigation register available"],["implantReg","Implants and prosthesis register available"],["preAnaes","Pre-anaesthesia documents available"],["files","Requested patient files available"]]]];
+const savedFact=c=>saved["hosp:"+c.hospital]&&saved["hosp:"+c.hospital].fact;
+const factOf=c=>savedFact(c)||(FACTS0[c.hospital]&&Object.assign({preset:true},FACTS0[c.hospital]))||null;
+const factAns=(f,k)=>(f&&f.a&&f.a[k])||(f&&f.preset?"yes":"");
+const MAF_ITEMS=[
+  {k:"opdReg",l:"Entry in outdoor (OPD) register found"},
+  {k:"ipdReg",l:"Entry in indoor (IPD) register found",crit:1},
+  {k:"otReg",l:"Entry in OT register found",surg:1,crit:1},
+  {k:"labReg",l:"Entry in hospital lab register found"},
+  {k:"ipdPapers",l:"IPD papers available and complete (presenting complaints, diagnosis, investigations, treatment)"},
+  {k:"ipdJustify",l:"IPD papers align with and justify the treatment given",key:1},
+  {k:"otNotes",l:"OT notes complete (start and end time, surgeon, anaesthetist, type of anaesthesia, site and side)",surg:1},
+  {k:"otConfirm",l:"OT notes confirm the booked surgery was done",surg:1,key:1},
+  {k:"preAnaes",l:"Pre-anaesthesia assessment by a qualified anaesthetist",surg:1},
+  {k:"nursing",l:"Daily nursing notes complete"},
+  {k:"doctorNotes",l:"Daily doctor notes complete"},
+  {k:"progress",l:"Daily progress chart (vitals with date and time) complete"},
+  {k:"treatment",l:"Daily treatment chart (medication with date and time) complete"},
+  {k:"dsComplete",l:"Discharge summary available and complete"},
+  {k:"lama",l:"Patient left against medical advice",invert:1}];
+const mafOf=c=>(saved[c.id]&&saved[c.id].maf)||c.maf0||null;
+const mafItems=c=>MAF_ITEMS.filter(i=>!i.surg||isSurg(c));
+const mafDone=c=>{const m=mafOf(c);return !!m&&mafItems(c).every(i=>m[i.k]);};
+function fieldTodo(c){
+  const out=[],v=visitOf(c),m=missingSlots(c),r=missingRules(c);
+  if(!factOf(c))out.push("hospital fact sheet");
+  if(!mafDone(c))out.push("case records form");
+  if(m.length)out.push(`${m.length} required photo${m.length>1?"s":""}`);
+  if(r.length)out.push(`${r.length} scheme rule question${r.length>1?"s":""}`);
+  if(v.status!=="done")out.push("home visit answers");
+  return out;
+}
+const isCrit=k=>CRITICAL.includes(k.group)||!!k.critical;
+
 /* ---------- Checks ---------- */
 const hashIndex={};
 CLAIMS.forEach(c=>c.files.forEach(f=>{(hashIndex[f.hash]=hashIndex[f.hash]||[]).push(c.id);}));
-const TAB_FOR={"Date logic":"docs","Medical logic":"docs","Identity":"docs","Cross-check":"docs","Billing":"docs","File tampering":"docs","Visual consistency":"docs","Duplicates":"docs","Page reading":"field","Visit evidence":"field","Home visit":"field","Scheme rules":"field","Concurrent claims":"docs","Claim history":"docs","Watch list":"docs","Package fit":"docs","Mandatory documents":"docs","Biometric":"docs","Document red flags":"docs"};
+const TAB_FOR={"Date logic":"docs","Medical logic":"docs","Identity":"docs","Cross-check":"docs","Billing":"docs","File tampering":"docs","Visual consistency":"docs","Duplicates":"docs","Page reading":"field","Visit evidence":"field","Home visit":"field","Scheme rules":"field","Concurrent claims":"docs","Claim history":"docs","Watch list":"docs","Package fit":"docs","Mandatory documents":"docs","Biometric":"docs","Document red flags":"docs","Desk audit":"docs","Hospital fact sheet":"field","Hospital records":"field"};
 const CRITICAL=["Home visit","Duplicates","File tampering","Identity","Page reading","Concurrent claims","Document red flags"];
 /* Basis shown next to every check, so reviewers know where each rule comes from */
 const BASIS={"Date logic":"ClaimSure","Medical logic":"ClaimSure","Identity":"NHA beneficiary verification","Cross-check":"ClaimSure","Billing":"NHA package rates",
-  "File tampering":"ClaimSure","Visual consistency":"ClaimSure","Duplicates":"ClaimSure","Page reading":"ClaimSure","Visit evidence":"ClaimSure","Home visit":"NHA beneficiary audit",
-  "Concurrent claims":"NHA trigger: same beneficiary in two places at once","Claim history":"NHA triggers: regular claim history; excessive use in a family",
+  "File tampering":"ClaimSure","Visual consistency":"ClaimSure","Duplicates":"ClaimSure","Page reading":"ClaimSure","Visit evidence":"ClaimSure","Home visit":"NHA Home Visit Format (Annexure 4)",
+  "Concurrent claims":"NHA trigger: same beneficiary in two places at once","Desk audit":"NHA Desk Audit Checklist (Annexure 1.1)",
+  "Hospital fact sheet":"NHA Fact Sheet (Annexure 2.1)","Hospital records":"NHA Medical Audit Form (Annexure 2.2)","Claim history":"NHA triggers: regular claim history; excessive use in a family",
   "Watch list":"NHA trigger: hospital on watch list","Package fit":"NHA trigger: higher-priced package blocked","Mandatory documents":"NHA trigger: missing reports; on-bed photo",
   "Biometric":"NHA: Aadhaar biometric at admission and discharge","Document red flags":"NHA anti-fraud guidelines: running-serial bills, colour copies"};
 const sameName=(a,b)=>{const n=s=>String(s||"").toLowerCase().replace(/[^a-z ]/g,"").split(" ").filter(w=>w.length>1).sort().join(" ");return n(a)!==""&&n(a)===n(b);};
@@ -980,7 +1100,7 @@ function sameBeneficiary(a,b){
   return !!a.patient.aadhaar&&a.patient.aadhaar===b.patient.aadhaar&&sameName(a.patient.name,b.patient.name)&&a.patient.gender===b.patient.gender&&Math.abs(Number(a.patient.age)-Number(b.patient.age))<=1;
 }
 const overlaps=(a,b)=>t(a.dates.admit)<=t(b.dates.discharge)&&t(b.dates.admit)<=t(a.dates.discharge);
-const within=(a,b,days)=>Math.abs(t(a.dates.admit)-t(b.dates.admit))<=days*864e5;
+const within=(a,b,days)=>Math.abs(t(a.dates.admit)-t(b.dates.admit))<=days;
 function nhaChecks(c,add){
   const others=CLAIMS.filter(o=>o.id!==c.id);
   // same beneficiary, overlapping stays
@@ -1017,6 +1137,39 @@ function nhaChecks(c,add){
   if(ph.length>=3&&ph[ph.length-1].n-ph[0].n===ph.length-1&&new Set(ph.map(b=>b.date)).size>1){rs="fail";rE.push(`${ph.length} pharmacy bills dated ${day(ph[0].date)} to ${day(ph[ph.length-1].date)} have running serial numbers (${ph[0].no} to ${ph[ph.length-1].no}). A busy pharmacy would show gaps; these look printed together.`);}
   c.files.filter(f=>f.copy==="colour").forEach(f=>{if(rs==="pass")rs="warn";rE.push(`${f.name} is a colour photocopy, not an original.`);});
   add("Document red flags","Bills and papers look genuine",rs,rs==="pass"?"No running-serial bills or photocopies found.":"Paperwork red flags found.",rE);
+}
+function nhaFormChecks(c,add,out){
+  const dk=deskOf(c);
+  if(!deskDone(c))add("Desk audit","Desk audit checklist is complete","pending",dk?`${DESK_QS.filter(q=>!dk[q.id]).length} of 11 questions still to answer.`:"Desk audit not done yet.",[]);
+  else{const no=DESK_QS.filter(q=>dk[q.id]==="no"),rm=dk.remarks||{},sg=deskSuggest(c);
+    /* answers that only repeat ClaimSure's own document checks are scored there, not twice */
+    const own=no.filter(q=>!(sg[q.id]&&sg[q.id].a==="no")),hard=own.some(q=>q.id==="d2"||q.id==="d8");
+    add("Desk audit","Desk audit checklist is complete",!own.length?"pass":hard?"fail":"warn",
+      !no.length?"All 11 answers are Yes.":!own.length?`${no.length} No answer${no.length>1?"s":""}, already covered by ClaimSure’s document checks.`:`${own.length} of the desk doctor’s answers ${own.length>1?"are":"is"} No.`,
+      own.map(q=>`Q${q.id.slice(1)} No: ${q.q}${rm[q.id]?` ${rm[q.id]}`:""}`));}
+  const f=factOf(c);
+  if(!f)add("Hospital fact sheet","Hospital fact sheet is complete and signed","pending","No fact sheet for this hospital yet.",[]);
+  else{const fe=[],A=k=>factAns(f,k);let fs="pass",crit=false;
+    if(f.tms!=null&&f.tms!==""&&f.found!=null&&f.found!==""&&Number(f.found)<Number(f.tms)){fs="fail";crit=true;fe.push(`Only ${f.found} of ${f.tms} patients shown admitted in TMS were found in the hospital on ${day(f.date)}.`);}
+    if(A("specialists")==="no"){fs="fail";fe.push("Specialists for the claims booked were not available.");}
+    if(isSurg(c)&&A("otSterile")==="no"){fs="fail";fe.push("OT sterilisation isn’t functional, but a surgical package is claimed.");}
+    if(A("files")==="no"){fs="fail";fe.push("The hospital didn’t produce the requested patient files.");}
+    const other=FACT_ITEMS.flatMap(([,it])=>it).filter(([k])=>!["specialists","otSterile","files"].includes(k)&&A(k)==="no");
+    if(other.length){if(fs==="pass")fs="warn";fe.push("Not available: "+other.map(([,l])=>shortL(l)).join("; ")+".");}
+    if(f.undertaking!=="yes"){if(fs==="pass")fs="warn";fe.push("The hospital didn’t sign the undertaking on the fact sheet.");}
+    add("Hospital fact sheet","Hospital fact sheet is complete and signed",fs,fs==="pass"?`Visited ${day(f.date)}; no gaps found and undertaking signed.`:"The hospital visit found gaps.",fe);
+    if(crit)out[out.length-1].critical=true;}
+  const m=mafOf(c),items=mafItems(c);
+  if(!mafDone(c))add("Hospital records","Hospital records support the claim","pending",m?`${items.filter(i=>!m[i.k]).length} items still to check.`:"Case records not checked yet.",[]);
+  else{const me=[];let ms="pass",crit=false;
+    items.forEach(i=>{const a=m[i.k];
+      if(i.invert){if(a==="yes"){if(ms==="pass")ms="warn";me.push("The patient left against medical advice.");}return;}
+      if(a!=="no")return;
+      if(i.crit){ms="fail";crit=true;me.push(`Not found: ${i.l.replace(/ found$/,"").toLowerCase()} for this patient.`);}
+      else if(i.key){ms="fail";me.push(`No: ${i.l}.`);}
+      else{if(ms==="pass")ms="warn";me.push(`No: ${i.l}.`);}});
+    add("Hospital records","Hospital records support the claim",ms,ms==="pass"?"Registers, case papers and charts support the claim.":"The hospital’s records don’t fully support the claim.",me);
+    if(crit)out[out.length-1].critical=true;}
 }
 function runChecks(c){
   const out=[],d=c.dates,hr=c.hospitalRecord,pd=c.patientDocs,v=visitOf(c);
@@ -1093,7 +1246,15 @@ function runChecks(c){
   if(v.status!=="done"){add("Home visit","Patient confirms the treatment","pending","Home visit not done yet.",[]);}
   else{const hE=[];let hs="pass";
     if(v.admitted==="no"){hs="fail";hE.push("The patient says they were never admitted.");}
-    if(Number(v.paid)>0){hs="fail";hE.push(`The patient paid ${inr(v.paid)} under a cashless scheme.`);}
+    if(Number(v.paid)>0){hs="fail";hE.push(`The patient paid ${inr(v.paid)} under a cashless scheme${v.purpose?`, for ${String(v.purpose).toLowerCase()}`:""}.`);}
+    else if(v.moneyAsked==="yes"){hs="fail";hE.push("The hospital asked the patient for money.");}
+    if(v.sameHosp==="no"){hs="fail";hE.push(`The patient says they were treated at ${v.otherHosp||"a different hospital"}, not ${shortHosp(c.hospital)}.`);}
+    if(v.availed==="yes"&&isSurg(c)&&v.surgery==="no"){hs="fail";hE.push("The patient says no surgery was done, but a surgical package was claimed.");}
+    if(v.ownCost==="yes"){hs="fail";hE.push("The patient bought medicines or tests at their own cost.");}
+    if(v.surgery==="yes"&&v.scar==="no"&&c.pkg.code!=="OP004"){if(hs!=="fail")hs="warn";hE.push("No surgical scar was seen.");}
+    if(v.pAdmit&&Math.abs(t(v.pAdmit)-t(c.dates.admit))>2){if(hs!=="fail")hs="warn";hE.push(`The patient recalls admission on ${day(v.pAdmit)}; the claim says ${day(c.dates.admit)}.`);}
+    if(v.food==="no"){if(hs!=="fail")hs="warn";hE.push("Free food and travel allowance weren’t provided.");}
+    if(v.postMeds==="no"){if(hs!=="fail")hs="warn";hE.push("No medicines were given after discharge.");}
     if(v.admitted==="yes"&&v.stay!==""&&v.stay!=null&&n!=null&&Math.abs(Number(v.stay)-n)>1){if(hs!=="fail")hs="warn";hE.push(`The patient recalls ${v.stay} day(s); the record shows ${n} night(s).`);}
     if(v.papers==="no"&&hs==="pass"){hs="warn";hE.push("The patient has no discharge papers.");}
     add("Home visit","Patient confirms the treatment",hs,hs==="pass"?"The patient confirmed the admission and paid nothing.":"The home visit raised problems.",hE);}
@@ -1101,11 +1262,12 @@ function runChecks(c){
   const ra=ruleAnswers(c.id);
   ruleQuestions(c).forEach(q=>{const a=ra[q.id],nm=RULESETS[q.set].name;
     add("Scheme rules",q.text,a==="yes"?"pass":a==="no"?"fail":"pending",a==="yes"?`Confirmed on the hospital visit (${nm} rule).`:a==="no"?`Not met. This is a ${nm} scheme rule.`:`${nm} rule. Answer it on the hospital visit.`,a==="no"?[q.ask.replace(/\?$/,"")+": no."]:[]);});
+  nhaFormChecks(c,add,out);
   nhaChecks(c,add);
   ruleQuestions(c).forEach(q=>{const k=out.find(x=>x.group==="Scheme rules"&&x.title===q.text);if(k)k.basis=q.basis||(RULESETS[q.set].name+" scheme rule");});
   return out;
 }
-function score(checks){let s=0;checks.forEach(k=>{if(k.status==="fail")s+=CRITICAL.includes(k.group)?50:30;else if(k.status==="warn")s+=12;});return Math.min(100,s);}
+function score(checks){let s=0;checks.forEach(k=>{if(k.status==="fail")s+=isCrit(k)?50:30;else if(k.status==="warn")s+=12;});return Math.min(100,s);}
 const band=s=>s>=50?"high":s>=20?"med":"low";
 const BAND={high:"High risk",med:"Medium risk",low:"Low risk"};
 let STATE=new Map();
@@ -1113,38 +1275,40 @@ function computeAll(){STATE=new Map();CLAIMS.forEach(c=>{const checks=runChecks(
 const stateOf=c=>STATE.get(c.id);
 
 /* ---------- Workflow ---------- */
-const STAGE={visit:"Needs field visit",ready:"Ready to decide",decided:"Decided"};
-function stageOf(c){if(decisionOf(c))return "decided";return (visitOf(c).status!=="done"||missingSlots(c).length||missingRules(c).length)?"visit":"ready";}
+const STAGE={desk:"Needs desk audit",visit:"Needs field visit",ready:"Ready to decide",decided:"Decided"};
+function stageOf(c){if(decisionOf(c))return "decided";if(!deskDone(c))return "desk";return fieldTodo(c).length?"visit":"ready";}
 function ordered(){return CLAIMS.slice().sort((a,b)=>{const da=decisionOf(a)?1:0,db=decisionOf(b)?1:0;if(da!==db)return da-db;return stateOf(b).score-stateOf(a).score||a.id.localeCompare(b.id);});}
 function nextCase(c){return ordered().find(x=>x.id!==(c&&c.id)&&!decisionOf(x));}
 const OPTIONS=[
-  {v:"Pass",d:"The claim is genuine. Release the payment.",cls:"v-pass"},
-  {v:"Recover excess amount",d:"Recover what was over-billed from the hospital.",cls:"v-recover"},
-  {v:"Refer to State Anti-Fraud Unit",d:"Signs of fraud. Send for investigation.",cls:"v-refer"},
-  {v:"Hold for more documents",d:"Ask the hospital for missing papers first.",cls:"v-hold"}
-];
-function suggest(st){
-  const f=st.checks.filter(k=>k.status==="fail").map(k=>k.group);
-  if(CRITICAL.some(g=>f.includes(g)))return {v:"Refer to State Anti-Fraud Unit",why:"There are signs of fraud, not just a billing error."};
-  if(f.length)return {v:"Recover excess amount",why:"Billing or document errors without signs of fraud."};
-  if(st.checks.some(k=>k.status==="pending"))return {v:"Hold for more documents",why:"Some checks are still waiting on evidence."};
-  if(st.checks.some(k=>k.status==="warn"))return {v:"Hold for more documents",why:"A few details need a closer look."};
-  return {v:"Pass",why:"Every check passed."};
+  {v:"Dismiss (non-fraud)",d:"The claim is genuine. It returns to normal processing.",cls:"v-pass"},
+  {v:"Process with partial amount",d:"Approve a reduced amount. Enter the recommended approval amount.",cls:"v-recover"},
+  {v:"Confirm fraud and reject",d:"Evidence shows fraud. Reject, recover if already paid, and refer the hospital for action.",cls:"v-refer"},
+  {v:"Send for field investigation",d:"Not enough evidence yet. Investigate in the field before deciding.",cls:"v-hold"}];
+function suggest(st,c){
+  const fails=st.checks.filter(k=>k.status==="fail");
+  if(fails.some(isCrit))return {v:"Confirm fraud and reject",why:"Fraud signals found, not just a billing error."};
+  if(fails.length)return {v:"Process with partial amount",why:"Billing or document errors without signs of fraud."};
+  if(c&&visitOf(c).status!=="done")return {v:"Send for field investigation",why:"The field visit hasn’t been done yet."};
+  if(st.checks.some(k=>k.status==="pending"))return {v:"Send for field investigation",why:"Some evidence is still missing."};
+  if(st.checks.some(k=>k.status==="warn"))return {v:"Dismiss (non-fraud)",why:"Only minor points remain. Note them in the reason."};
+  return {v:"Dismiss (non-fraud)",why:"Every check passed."};
 }
 function nextStep(c,st){
   const dec=decisionOf(c);
   if(dec){const nx=nextCase(c);return {done:true,t:`Decided: ${dec.verdict}.`,d:nx?`Next up: ${nx.patient.name} (risk ${stateOf(nx).score}).`:"That was the last open case.",label:nx?"Open next case":"",act:"next"};}
-  const fails=st.checks.filter(k=>k.status==="fail").length,v=visitOf(c),miss=missingSlots(c);
-  const mr=missingRules(c);
-  if(v.status!=="done"||miss.length||mr.length){const todo=[];if(v.status!=="done")todo.push("home visit answers");if(miss.length)todo.push(`${miss.length} required photo${miss.length>1?"s":""}`);if(mr.length)todo.push(`${mr.length} scheme rule question${mr.length>1?"s":""}`);
+  const fails=st.checks.filter(k=>k.status==="fail").length;
+  if(!deskDone(c)){const dk=deskOf(c)||{},left=DESK_QS.filter(q=>!dk[q.id]).length;
+    return {t:"Start with the desk audit.",d:`${11-left} of 11 checklist questions answered. ClaimSure pre-fills the ones it can verify.`,label:"Open desk audit",act:"docs"};}
+  const todo=fieldTodo(c);
+  if(todo.length){
     return {t:fails?`${fails} problem${fails>1?"s":""} found. Confirm on the field visit.`:"The documents look fine. Confirm on the field visit.",d:`Still needed: ${todo.join(" and ")}.`,label:"Go to field visit",act:"field"};}
-  return {t:"Evidence is complete. Record your decision.",d:`Suggested: ${suggest(st).v}.`,label:"Decide now",act:"decide"};
+  return {t:"Evidence is complete. Record your decision.",d:`Suggested: ${suggest(st,c).v}.`,label:"Decide now",act:"decide"};
 }
 function tabDot(c,st,tab){
   const worst=list=>list.some(k=>k.status==="fail")?"fail":list.some(k=>k.status==="warn")?"warn":list.some(k=>k.status==="pending")?"pending":"pass";
   if(tab==="review")return worst(st.checks);
   if(tab==="docs")return worst(st.checks.filter(k=>TAB_FOR[k.group]==="docs"));
-  if(tab==="field")return (visitOf(c).status==="done"&&!missingSlots(c).length&&!missingRules(c).length)?worst(st.checks.filter(k=>TAB_FOR[k.group]==="field")):"pending";
+  if(tab==="field")return !fieldTodo(c).length?worst(st.checks.filter(k=>TAB_FOR[k.group]==="field")):"pending";
   return decisionOf(c)?"pass":"pending";
 }
 
@@ -1158,9 +1322,9 @@ function renderTop(){
   document.getElementById("progress").innerHTML=`<span><b>${done} of ${CLAIMS.length}</b> cases decided</span><span class="bar"><i style="width:${pct}%"></i></span>`;
 }
 function renderFilters(){
-  const cnt={all:CLAIMS.length,high:0,visit:0,ready:0,decided:0,imported:CLAIMS.filter(c=>c.source==="import").length};
+  const cnt={all:CLAIMS.length,high:0,desk:0,visit:0,ready:0,decided:0,imported:CLAIMS.filter(c=>c.source==="import").length};
   CLAIMS.forEach(c=>{if(stateOf(c).band==="high"&&!decisionOf(c))cnt.high++;cnt[stageOf(c)]++;});
-  const F=[["all","All"],["high","High risk"],["visit","Needs visit"],["ready","Ready"],["decided","Decided"]].concat(cnt.imported?[["imported","Imported"]]:[]);
+  const F=[["all","All"],["high","High risk"],["desk","Desk audit"],["visit","Needs visit"],["ready","Ready"],["decided","Decided"]].concat(cnt.imported?[["imported","Imported"]]:[]);
   document.getElementById("qtools").innerHTML=canImport()?`<button class="btn ghost small" data-imp="open" title="Upload a CSV or Excel case list from the client">Import cases</button>`:"";
   document.getElementById("filters").innerHTML=F.map(([k,l])=>`<button class="chip" data-filter="${k}" aria-pressed="${UI.filter===k}">${l} <b>${cnt[k]}</b></button>`).join("");
 }
@@ -1168,7 +1332,7 @@ function renderQueue(){
   const sel=location.hash.slice(1),q=UI.query.toLowerCase();
   const items=ordered().filter(c=>{
     if(UI.filter==="high"&&(stateOf(c).band!=="high"||decisionOf(c)))return false;
-    if(["visit","ready","decided"].includes(UI.filter)&&stageOf(c)!==UI.filter)return false;
+    if(["desk","visit","ready","decided"].includes(UI.filter)&&stageOf(c)!==UI.filter)return false;
     if(UI.filter==="imported"&&c.source!=="import")return false;
     return (c.id+" "+c.patient.name+" "+c.hospital+" "+c.village+" "+c.pkg.name).toLowerCase().includes(q);
   });
@@ -1231,6 +1395,9 @@ function reviewView(c,st){
 }
 
 function docsView(c){
+  return deskForm(c)+docsDetail(c);
+}
+function docsDetail(c){
   const hr=c.hospitalRecord,pd=c.patientDocs;
   const rows=[["Name",c.patient.name,hr.name,pd.name],["Age",c.patient.age,hr.age,pd.age],["Sex",fmtVal("gender",c.patient.gender),fmtVal("gender",hr.gender),fmtVal("gender",pd.gender)],
     ["Masked Aadhaar","xxxx "+c.patient.aadhaar,"xxxx "+hr.aadhaar,"—"],["Diagnosis",c.diagnosis,hr.diagnosis,pd.diagnosis],["Procedure",c.pkg.name,hr.procedure,pd.procedure],
@@ -1238,9 +1405,9 @@ function docsView(c){
     ["Doctor",c.doctor,hr.doctor,pd.doctor],["Amount",inr(c.claimAmount),inr(hr.billAmount),"—"]];
   const cell=(v,ref)=>{const bad=v!=="—"&&v!==""&&String(v)!==String(ref);return `<td class="${bad?"bad":""}">${esc(v===""?"Not available":v)}</td>`;};
   const pages=photosOf(c.id).filter(p=>slotOf(p.slot).read&&readsOf(c.id)[p.id]);
-  return `<h2>Claim vs hospital record vs patient’s papers</h2>
+  return `<div class="section"><h2>Claim vs hospital record vs patient’s papers</h2>
     <div class="tablewrap"><table><thead><tr><th>Field</th><th>Claim</th><th>Hospital record</th><th>Patient’s papers</th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><th scope="row">${r[0]}</th><td>${esc(r[1])}</td>${cell(r[2],r[1])}${cell(r[3],r[1])}</tr>`).join("")}</tbody></table></div>
+    <tbody>${rows.map(r=>`<tr><th scope="row">${r[0]}</th><td>${esc(r[1])}</td>${cell(r[2],r[1])}${cell(r[3],r[1])}</tr>`).join("")}</tbody></table></div></div>
     ${pages.length?`<div class="section"><h2>Read from the hospital’s pages</h2><div class="slots">${pages.map(p=>`<div class="slot wide"><div class="slot-h"><b>${esc(slotOf(p.slot).label)}</b></div>${readCard(c,p)}</div>`).join("")}</div></div>`:""}
     ${docChecklist(c)}
     <div class="section"><h2>Files in the claim</h2>
@@ -1286,9 +1453,62 @@ function slotCard(c,s){
 }
 
 const QS={
-  en:{admitted:"Were you admitted to this hospital?",stay:"How many days did you stay?",paid:"Did you pay any money to the hospital? How much (₹)?",papers:"Do you have your discharge papers?",notes:"Auditor’s notes",yes:"Yes",no:"No"},
-  te:{admitted:"మీరు ఈ ఆసుపత్రిలో చేరారా?",stay:"మీరు ఎన్ని రోజులు ఉన్నారు?",paid:"మీరు ఆసుపత్రికి ఏమైనా డబ్బు చెల్లించారా? ఎంత (₹)?",papers:"మీ దగ్గర డిశ్చార్జ్ పేపర్లు ఉన్నాయా?",notes:"ఆడిటర్ నోట్స్",yes:"అవును",no:"కాదు"}
+  en:{availed:"Have you used AB PM-JAY / Dr NTR Vaidya Seva for treatment?",sameHosp:"Were you treated at {h}?",otherHosp:"If not, at which hospital?",complaints:"What problem did you have when you were admitted?",since:"Since when did you have it?",
+    referred:"Were you referred by another hospital, clinic or doctor?",refFrom:"Who referred you?",pAdmit:"When were you admitted?",pDischarge:"When were you discharged?",treatment:"What treatment was given?",surgery:"Was any surgery done?",scar:"Is there a scar on the body? (look, and photograph with consent)",
+    food:"Were you given free food and travel allowance?",postMeds:"Were you given medicines after discharge?",moneyAsked:"Did the hospital ask for money at any point?",amount:"If yes, how much (₹)?",purpose:"For what?",receipts:"Do you have receipts?",
+    ownCost:"Did you buy any medicine or do any test at your own cost?",ownReceipt:"Do you have the receipt?",dischargeSummary:"Were you given a discharge summary?",notes:"Any other remark or observation",yes:"Yes",no:"No"},
+  te:{availed:"మీరు ఆయుష్మాన్ భారత్ / డా. ఎన్టీఆర్ వైద్య సేవ ద్వారా చికిత్స పొందారా?",sameHosp:"మీకు {h}లో చికిత్స జరిగిందా?",otherHosp:"కాకపోతే, ఏ ఆసుపత్రిలో?",complaints:"చేరినప్పుడు మీకు ఉన్న సమస్య ఏమిటి?",since:"అది ఎప్పటి నుంచి ఉంది?",
+    referred:"వేరే ఆసుపత్రి, క్లినిక్ లేదా డాక్టర్ మిమ్మల్ని పంపించారా?",refFrom:"ఎవరు పంపించారు?",pAdmit:"మీరు ఎప్పుడు చేరారు?",pDischarge:"మీరు ఎప్పుడు డిశ్చార్జ్ అయ్యారు?",treatment:"ఏ చికిత్స ఇచ్చారు?",surgery:"ఏదైనా ఆపరేషన్ చేశారా?",scar:"శరీరంపై ఆపరేషన్ మచ్చ ఉందా?",
+    food:"మీకు ఉచిత భోజనం, ప్రయాణ ఖర్చులు ఇచ్చారా?",postMeds:"డిశ్చార్జ్ తర్వాత మందులు ఇచ్చారా?",moneyAsked:"ఆసుపత్రి ఎప్పుడైనా డబ్బు అడిగిందా?",amount:"అవును అయితే, ఎంత (₹)?",purpose:"దేనికోసం?",receipts:"రసీదులు ఉన్నాయా?",
+    ownCost:"మీ సొంత ఖర్చుతో మందులు కొన్నారా లేదా పరీక్షలు చేయించుకున్నారా?",ownReceipt:"రసీదు ఉందా?",dischargeSummary:"మీకు డిశ్చార్జ్ సమ్మరీ ఇచ్చారా?",notes:"ఇతర గమనికలు",yes:"అవును",no:"కాదు"}
 };
+
+const VISIT_KEYS=["availed","sameHosp","otherHosp","complaints","since","referred","refFrom","pAdmit","pDischarge","treatment","surgery","scar","food","postMeds","moneyAsked","amount","purpose","receipts","ownCost","ownReceipt","dischargeSummary","notes"];
+const shortL=l=>{const s=l.replace(/ (available|found)( at the time of visit)?$/,"");return /^[A-Z][A-Z]/.test(s)?s:s.charAt(0).toLowerCase()+s.slice(1);};
+const ynR=(name,val,lab)=>`<div class="yn sm">${["yes","no"].map(x=>`<label><input type="radio" name="${name}" value="${x}" ${val===x?"checked":""}><span>${lab?lab[x]:(x==="yes"?"Yes":"No")}</span></label>`).join("")}</div>`;
+function deskForm(c){
+  const dk=deskOf(c)||{},sg=deskSuggest(c),rm=dk.remarks||{},left=DESK_QS.filter(q=>!dk[q.id]).length;
+  return `<div class="section nhaform" id="deskform"><div class="parthead"><div><h2>Desk audit checklist <span class="tag nha">NHA Annexure 1.1</span></h2>
+      <p class="hint">${left?`${left} of 11 to answer.`:`Complete${dk.by?`, by ${esc(dk.by)}`:""}.`} ClaimSure pre-checks what it can verify from the claim documents; the desk doctor answers the rest.</p></div>
+      ${Object.keys(sg).some(k=>!dk[k])?`<button class="btn ghost small" data-act="desksuggest">Fill ClaimSure’s answers</button>`:""}</div>
+    <form id="deskForm" class="formtab" onsubmit="return false">${DESK_QS.map((q,i)=>`<div class="fq"><span class="fn">${i+1}</span><div class="ft"><span>${esc(q.q)}</span>
+      ${sg[q.id]?`<small class="sug ${sg[q.id].a}">ClaimSure: ${sg[q.id].a==="yes"?"Yes":"No"}. ${esc(sg[q.id].why)}</small>`:""}
+      <input class="rmk" name="r-${q.id}" placeholder="Remarks" value="${esc(rm[q.id]||"")}" aria-label="Remarks for question ${i+1}"></div>${ynR("d-"+q.id,dk[q.id])}</div>`).join("")}
+    <div class="row"><button class="btn" type="button" data-act="savedesk">Save desk audit</button></div></form></div>`;
+}
+function factForm(c){
+  const f=factOf(c),g=f||{a:{},beds:{}},A=k=>factAns(f,k),num=(n,v)=>`<input type="number" min="0" inputmode="numeric" name="${n}" value="${esc(v==null?"":v)}">`;
+  const sel=(n,opts,v)=>`<select name="${n}">${opts.map(o=>`<option ${v===o?"selected":""}>${o}</option>`).join("")}</select>`;
+  return `<div class="section nhaform"><div class="parthead"><div><h2>Hospital fact sheet <span class="tag nha">NHA Annexure 2.1</span></h2>
+      <p class="hint">One per hospital visit, shared by every case at ${esc(shortHosp(c.hospital))}. ${f?`Filled ${day(f.date)} by ${esc(f.by||"auditor")}${f.preset?" (sample)":""}.`:"Not filled yet."} Fill it in agreement with the hospital’s representative, then have it signed and stamped.</p></div></div>
+    <form id="factForm" class="formtab" onsubmit="return false">
+      <div class="fgrid">
+        <label>Date of visit<input type="date" name="date" value="${esc(g.date||new Date().toISOString().slice(0,10))}"></label>
+        <label>Type of hospital${sel("hospType",["Private","Public"],g.hospType)}</label>
+        <label>Response from hospital${sel("response",["Co-operative","Non co-operative","Indifferent"],g.response)}</label>
+        <label>PM-JAY patients shown admitted in TMS${num("tms",g.tms)}</label>
+        <label>Patients actually found admitted${num("found",g.found)}</label>
+        <label>Beds: general ward${num("bedsGeneral",(g.beds||{}).general)}</label>
+        <label>Beds: ICU${num("bedsIcu",(g.beds||{}).icu)}</label>
+        <label>Beds: HDU${num("bedsHdu",(g.beds||{}).hdu)}</label>
+        <label>Operation theatres${num("ots",g.ots)}</label>
+        <label>OT tables${num("otTables",g.otTables)}</label>
+      </div>
+      ${FACT_ITEMS.map(([sec,items])=>`<h3>${sec}</h3>${items.map(([k,l])=>`<div class="fq"><div class="ft"><span>${esc(l)}</span></div>${ynR("f-"+k,A(k))}</div>`).join("")}`).join("")}
+      <h3>Undertaking by hospital</h3>
+      <p class="hint" style="margin:0 0 6px">The hospital certifies the information is true, based on its records, with no facts suppressed, and accepts that it stands to forfeit its claims if not.</p>
+      <div class="fq"><div class="ft"><span>Signed and stamped by the hospital’s authorised person</span><input class="rmk" name="signatory" placeholder="Name and designation" value="${esc(g.signatory||"")}"></div>${ynR("undertaking",g.undertaking)}</div>
+      <div class="row"><button class="btn" type="button" data-act="savefact">Save fact sheet</button></div></form></div>`;
+}
+function mafForm(c){
+  const m=mafOf(c)||{},items=mafItems(c),left=items.filter(i=>!m[i.k]).length;
+  return `<div class="section nhaform"><div class="parthead"><div><h2>Case records <span class="tag nha">NHA Annexure 2.2, part E</span></h2>
+      <p class="hint">${left?`${left} of ${items.length} to check.`:"Complete."} Check this patient’s entries in the hospital’s registers and case papers.</p></div></div>
+    <form id="mafForm" class="formtab" onsubmit="return false">
+      <div class="fgrid"><label>Specialisation of treating doctor<input name="spec" value="${esc(m.spec||"")}" placeholder="For example, General surgeon"></label></div>
+      ${items.map(i=>`<div class="fq"><div class="ft"><span>${esc(i.l)}</span></div>${ynR("m-"+i.k,m[i.k])}</div>`).join("")}
+      <div class="row"><button class="btn" type="button" data-act="savemaf">Save case records</button></div></form></div>`;
+}
 function rulesBlock(c){
   const qs=ruleQuestions(c),cl=clientOf(c);if(!qs.length)return "";const ra=ruleAnswers(c.id);
   return `<div class="section"><div class="parthead"><div><h2>Scheme rules</h2><p class="hint">Set by ${esc(cl.name)}: ${esc(rulesText(cl))}.</p></div></div>
@@ -1297,25 +1517,26 @@ function rulesBlock(c){
 function fieldView(c){
   const hs=SLOTS.filter(s=>s.visit==="hospital"),ms=SLOTS.filter(s=>s.visit==="home");
   const left=list=>list.filter(s=>s.req&&!photosOf(c.id).some(p=>p.slot===s.id)).length;
-  const v=Object.assign({status:"pending",admitted:"",stay:"",paid:"",papers:"",notes:""},visitOf(c));
+  const v=Object.assign({status:"pending"},visitOf(c),UI.draft&&UI.draft.id===c.id?UI.draft.v:{});
   const homeLeft=left(ms)+(v.status==="done"?0:1);
   const storeNote=PhotoStore.mode==="cloud"?"Photos upload to your team’s storage.":PhotoStore.mode==="local"?"Photos are saved on this device until cloud storage is connected.":"This browser can’t save photos.";
   const seg=`<div class="seg" role="group" aria-label="Visit"><button data-part="hospital" aria-pressed="${UI.part==="hospital"}">Hospital visit ${left(hs)?`<span class="mini">${left(hs)} to do</span>`:`<span class="mini">Done</span>`}</button>
     <button data-part="home" aria-pressed="${UI.part==="home"}">Home visit ${homeLeft?`<span class="mini">${homeLeft} to do</span>`:`<span class="mini">Done</span>`}</button></div>`;
   if(UI.part==="hospital")return seg+`<div class="parthead"><p class="hint">Photograph each item at ${esc(shortHosp(c.hospital))}. Every photo is stamped with time, place and your name. ${storeNote}</p>
       <button class="btn ghost small" data-sample="hospital">Add sample photos (demo)</button></div>
-    <div class="slots">${hs.map(s=>slotCard(c,s)).join("")}</div>${rulesBlock(c)}`;
+    <div class="slots">${hs.map(s=>slotCard(c,s)).join("")}</div>${factForm(c)}${mafForm(c)}${rulesBlock(c)}`;
   const q=QS[UI.lang],cls=UI.lang==="te"?"te":"";
   const yn=(name,val)=>`<div class="yn"><label><input type="radio" name="${name}" value="yes" ${val==="yes"?"checked":""}><span class="${cls}">${q.yes}</span></label><label><input type="radio" name="${name}" value="no" ${val==="no"?"checked":""}><span class="${cls}">${q.no}</span></label></div>`;
   return seg+`<label class="consent"><input type="checkbox" id="consent" ${consentOf(c.id)?"checked":""}><span>The patient or a family member agreed to the visit and to photos<small>Needed before taking photos of the patient. Only the auditor’s location is recorded, never data from the patient’s phone.</small></span></label>
     <div class="parthead"><div><h2>Ask the patient</h2><p class="hint">${esc(c.patient.name)}, ${esc(c.village)}</p></div>
       <div class="seg" role="group" aria-label="Question language" style="margin:0"><button data-lang="en" aria-pressed="${UI.lang==="en"}">English</button><button class="te" data-lang="te" aria-pressed="${UI.lang==="te"}">తెలుగు</button></div></div>
     <form class="visit" id="visitForm" onsubmit="return false">
-      <div class="q"><span class="ql ${cls}">${q.admitted}</span>${yn("admitted",v.admitted)}</div>
-      <div class="q"><label class="ql ${cls}" for="stay">${q.stay}</label><input id="stay" type="number" min="0" inputmode="numeric" name="stay" value="${esc(v.stay)}"></div>
-      <div class="q"><label class="ql ${cls}" for="paid">${q.paid}</label><input id="paid" type="number" min="0" step="100" inputmode="numeric" name="paid" value="${esc(v.paid)}"></div>
-      <div class="q"><span class="ql ${cls}">${q.papers}</span>${yn("papers",v.papers)}</div>
-      <div class="q"><label class="ql ${cls}" for="notes">${q.notes}</label><textarea id="notes" name="notes">${esc(v.notes)}</textarea></div>
+      <p class="hint" style="margin:0">NHA Home Visit Format (Annexure 4). Speak to the patient in private, away from hospital staff.</p>
+      ${[["availed","yn"],["sameHosp","yn"],["otherHosp","text"],["complaints","text"],["since","text"],["referred","yn"],["refFrom","text"],["pAdmit","date"],["pDischarge","date"],["treatment","text"],["surgery","yn"],["scar","yn"],["food","yn"],["postMeds","yn"],
+        ["moneyAsked","yn"],["amount","num"],["purpose","text"],["receipts","yn"],["ownCost","yn"],["ownReceipt","yn"],["dischargeSummary","yn"]].map(([k,ty])=>{const lab=q[k].replace("{h}",shortHosp(c.hospital));
+        return ty==="yn"?`<div class="q"><span class="ql ${cls}">${esc(lab)}</span>${yn(k,v[k])}</div>`
+          :`<div class="q"><label class="ql ${cls}" for="v-${k}">${esc(lab)}</label><input id="v-${k}" name="${k}" ${ty==="date"?'type="date"':ty==="num"?'type="number" min="0" step="100" inputmode="numeric"':""} value="${esc(k==="amount"?(Number(v.amount)>0?v.amount:""):v[k]||"")}"></div>`;}).join("")}
+      <div class="q"><label class="ql ${cls}" for="notes">${q.notes}</label><textarea id="notes" name="notes">${esc(v.notes||"")}</textarea></div>
       <div class="row"><button class="btn" type="button" data-act="savevisit">Save answers</button><button class="btn ghost" type="button" data-act="resetvisit">Reset to sample</button></div>
     </form>
     <div class="section"><div class="parthead"><h2>Home visit photos</h2><button class="btn ghost small" data-sample="home" ${consentOf(c.id)?"":"disabled title=\"Record consent first\""}>Add sample photos (demo)</button></div>
@@ -1323,11 +1544,13 @@ function fieldView(c){
 }
 
 function decideView(c,st){
-  const sg=suggest(st),dec=decisionOf(c)||{};
+  const sg=suggest(st,c),dec=decisionOf(c)||{};
   return `<div class="decide">
-    <section class="choose" aria-label="Your decision"><h2>Your decision</h2>
+    <section class="choose" aria-label="Your recommendation"><h2>Your recommendation</h2><p class="hint" style="margin-top:-4px">Uses the SAFU portal’s actions, so the SHA can act on it directly.</p>
       <p class="hint">Suggested: <b>${esc(sg.v)}</b>. ${esc(sg.why)}</p>
       <div class="opts" role="radiogroup">${OPTIONS.map(o=>`<label class="opt"><input type="radio" name="verdict" value="${esc(o.v)}" ${(dec.verdict||"")===o.v?"checked":""}><span><b>${esc(o.v)}${o.v===sg.v?"<em>Suggested</em>":""}</b><small>${esc(o.d)}</small></span></label>`).join("")}</div>
+      <label class="lbl" for="damt">Recommended approval amount (₹)<small class="hint" style="display:block;font-weight:400">Used with “Process with partial amount”. Leave blank otherwise.</small></label>
+      <input id="damt" type="number" min="0" step="100" inputmode="numeric" value="${esc(dec.amount!=null&&dec.amount!==""?dec.amount:(sg.v==="Process with partial amount"?Math.max(0,c.claimAmount-amountQuestioned(c,st).amt):""))}">
       <label class="lbl" for="dnote">Reason</label><textarea id="dnote" placeholder="One or two lines for the record">${esc(dec.note||"")}</textarea>
       <div class="row"><button class="btn" data-act="savedec">Save decision</button><button class="btn ghost" data-act="savenext">Save and open next</button></div>
       <button class="link" data-act="print" style="justify-self:start">Download or print the report (PDF)</button>
@@ -1339,6 +1562,9 @@ const RES={pass:["Pass","tp"],warn:["Needs a look","tw"],fail:["Failed","tf"],pe
 const OUTSTANDING={
   "Page reading":"The admission register and case sheet have not been photographed and read yet.",
   "Visit evidence":"Visit photos have not been taken yet.",
+  "Desk audit":"The desk audit checklist isn’t complete.",
+  "Hospital fact sheet":"The hospital fact sheet hasn’t been filled at the hospital visit.",
+  "Hospital records":"This patient’s entries in the hospital’s registers and case papers haven’t been checked.",
   "Home visit":"The home visit with the patient has not been done yet.",
   "Cross-check":"The patient’s own discharge papers have not been collected yet.",
   "File tampering":"The claim documents (bills, discharge summary) have not been attached yet.",
@@ -1349,8 +1575,8 @@ const OUTSTANDING={
   "Package fit":"The claim data has no diagnosis, so the package can’t be checked against it."
 };
 function amountQuestioned(c,st){
-  const f=st.checks.filter(k=>k.status==="fail").map(k=>k.group);
-  if(CRITICAL.some(g=>f.includes(g)))return {amt:c.claimAmount,why:"Full claim, because of fraud signals"};
+  const fl=st.checks.filter(k=>k.status==="fail"),f=fl.map(k=>k.group);
+  if(fl.some(isCrit))return {amt:c.claimAmount,why:"Full claim, because of fraud signals"};
   if(f.includes("Billing")){const ledger=Number(c.hospitalRecord.billAmount)||c.pkg.rate||c.claimAmount,base=Math.min(c.pkg.rate||ledger,ledger),x=c.claimAmount-base;
     if(x>0)return {amt:x,why:ledger<c.pkg.rate?"Billed above the hospital’s own ledger":"Billed above the package rate"};}
   return {amt:0,why:"No excess found"};
@@ -1365,93 +1591,143 @@ function checkText(k){
   return esc(k.detail)+(k.evidence.length&&k.group!=="Page reading"?`<ul>${k.evidence.map(e=>`<li>${esc(e)}</li>`).join("")}</ul>`:k.group==="Page reading"&&k.status!=="pass"?" See section 3.":"");
 }
 function reportView(c,st){
-  const v=visitOf(c),dec=decisionOf(c),ph=photosOf(c.id),opt=dec&&OPTIONS.find(o=>o.v===dec.verdict),sg=suggest(st),aq=amountQuestioned(c,st),ev=evidenceLine(c);
+  const v=visitOf(c),dec=decisionOf(c),ph=photosOf(c.id),opt=dec&&OPTIONS.find(o=>o.v===dec.verdict),sg=suggest(st,c),aq=amountQuestioned(c,st),ev=evidenceLine(c);
+  const cl=clientOf(c),f=factOf(c),m=mafOf(c)||{},dk=deskOf(c)||{},surg=isSurg(c);
   const fails=st.checks.filter(k=>k.status==="fail"),warns=st.checks.filter(k=>k.status==="warn"),pend=st.checks.filter(k=>k.status==="pending");
   const pages=ph.filter(p=>slotOf(p.slot).read&&readsOf(c.id)[p.id]);
   const today=day(new Date().toISOString().slice(0,10)),n=nights(c.dates.admit,c.dates.discharge);
+  const YN=x=>x==="yes"?"Yes":x==="no"?`<b class="tf">No</b>`:`<span class="tq">Not answered</span>`;
+  const YNi=x=>x==="yes"?`<b class="tw">Yes</b>`:x==="no"?"No":`<span class="tq">Not answered</span>`;
   const kf=[...fails,...warns].map(k=>{
-    const pr=k.status==="fail"?`<span class="tagf tf">Failed:</span>`:`<span class="tagf tw">Needs a look:</span>`;
+    const pr=k.status==="fail"?`<span class="tagf tf">${isCrit(k)?"Fraud signal":"Failed"}:</span>`:`<span class="tagf tw">Needs a look:</span>`;
     if(k.group==="Page reading"){const cnt=pages.reduce((s,p)=>s+comparePage(c,p.slot,readsOf(c.id)[p.id].fields).filter(x=>x.st===k.status).length,0);
-      return `<li>${pr} The hospital’s own register or case sheet ${k.status==="fail"?"contradicts":"doesn’t fully confirm"} the claim on ${cnt} detail${cnt===1?"":"s"} (section 3).</li>`;}
-    return `<li>${pr} ${esc(k.evidence[0]||k.detail)}${k.evidence.length>1?` ${k.evidence.slice(1).map(esc).join(" ")}`:""}</li>`;}).join("");
-  const kv=[["Claim number",c.id,"Scheme",clientOf(c).scheme],["Patient",c.patient.name,"Age and sex",`${c.patient.age}, ${fmtVal("gender",c.patient.gender)}`],
-    ["Masked Aadhaar","xxxx xxxx "+c.patient.aadhaar,"Address",[c.village,c.district&&c.district+" district"].filter(Boolean).join(", ")||"Not given"],["Hospital",c.hospital,"Treating doctor",c.doctor],
-    ["Package",`${c.pkg.code} ${c.pkg.name}`,"Package rate",c.pkg.rate?inr(c.pkg.rate):"Not given"],["Admitted",day(c.dates.admit),"Discharged",`${day(c.dates.discharge)} (${n} night${n===1?"":"s"})`],
-    ["Diagnosis",c.diagnosis||"Not given","Amount claimed",inr(c.claimAmount)],["Client",`${clientOf(c).name} (rules: ${rulesText(clientOf(c))})`,"Reason for audit",c.reason||"Not given"]];
-  const q=QS.en;
+      return `<li>${pr} The hospital’s own register or case sheet ${k.status==="fail"?"contradicts":"doesn’t fully confirm"} the claim on ${cnt} detail${cnt===1?"":"s"} (Annexure E).</li>`;}
+    return `<li>${pr} ${esc(k.evidence.length?k.evidence.join(" "):k.detail)}</li>`;}).join("");
+  const triggers=[c.reason,...[...fails,...warns].filter(k=>/^NHA trigger/.test(k.basis)).map(k=>k.basis.replace(/^NHA triggers?: /,""))].filter(Boolean);
+  const noItems=sec=>f?FACT_ITEMS.find(([s])=>s===sec)[1].filter(([k])=>factAns(f,k)==="no").map(([,l])=>l):[];
+  const secObs=(sec,extra)=>!f?`<p>Not recorded. The hospital fact sheet hasn’t been filled.</p>`:(()=>{const no=noItems(sec);return `<p>${no.length?`Not available at the time of visit: ${no.map(l=>esc(shortL(l))).join("; ")}.`:`All ${FACT_ITEMS.find(([s])=>s===sec)[1].length} items checked were available.`}${extra||""}</p>`;})();
+  const hospPh=ph.filter(p=>slotOf(p.slot).visit==="hospital"&&!slotOf(p.slot).read);
+  const statusLabel=dec?"Final":"Draft";
   return `<article class="report" id="report">
     ${dec?"":`<div class="watermark" aria-hidden="true">Draft</div>`}
     <header class="dh">
       <div class="dh-brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2.2 2"/><path d="M11 16.5l3.4 3.4 7.1-7.4" fill="none" stroke="var(--accent-line)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <div><b>ClaimSure</b><span>Claim audit report</span></div></div>
-      <dl class="dh-ref"><div><dt>Reference</dt><dd>CS-AR-${esc(c.id)}</dd></div><div><dt>Status</dt><dd>${dec?"Final":"Draft"}</dd></div><div><dt>Prepared</dt><dd>${today}</dd></div></dl>
+        <div><b>ClaimSure</b><span>Medical audit report · NHA format (Annexure 2.3)</span></div></div>
+      <dl class="dh-ref"><div><dt>Reference</dt><dd>CS-AR-${esc(c.id)}</dd></div><div><dt>Status</dt><dd>${statusLabel}</dd></div><div><dt>Prepared</dt><dd>${today}</dd></div></dl>
     </header>
-    <h1 class="dtitle">${esc(c.patient.name)}, claim ${esc(c.id)}</h1>
-    <p class="dsub">${esc(c.pkg.name)} at ${esc(c.hospital)}</p>
+    <h1 class="dtitle">${esc(cl.state)} field visit / medical audit</h1>
+    <p class="dsub">${esc(c.hospital)}${c.district?`, ${esc(c.district)} district`:""} · Case ${esc(c.id)} · Prepared for ${esc(cl.name)}</p>
 
     <div class="glance">
-      <div class="g-out">${dec?`<span class="g-lbl">Auditor’s decision</span><span class="big">${esc(dec.verdict)}</span><span class="why">${esc(dec.note||sg.why)}</span><span class="stamp ${opt?opt.cls:""}">${esc(dec.verdict)}<small>${esc(dec.by||"Auditor")}, ${day(String(dec.at||"").slice(0,10))}</small></span>`
-        :`<span class="g-lbl">Recommended action (no decision yet)</span><span class="big">${esc(sg.v)}</span><span class="why">${esc(sg.why)}</span>`}</div>
+      <div class="g-out">${dec?`<span class="g-lbl">Recommendation to the SHA</span><span class="big">${esc(dec.verdict)}</span><span class="why">${esc(dec.note||sg.why)}</span><span class="stamp ${opt?opt.cls:""}">${esc(dec.verdict)}<small>${esc(dec.by||"Auditor")}, ${day(String(dec.at||"").slice(0,10))}</small></span>`
+        :`<span class="g-lbl">Suggested action (no recommendation recorded yet)</span><span class="big">${esc(sg.v)}</span><span class="why">${esc(sg.why)}</span>`}</div>
       <div class="g-kpis">
         <div class="kpi"><small>Risk score</small><b class="lv-${st.band}">${st.score} of 100</b><small>${BAND[st.band]}</small></div>
         <div class="kpi"><small>Amount claimed</small><b>${inr(c.claimAmount)}</b><small>Package rate ${c.pkg.rate?inr(c.pkg.rate):"not given"}</small></div>
-        <div class="kpi"><small>Amount questioned</small><b>${inr(aq.amt)}</b><small>${esc(aq.why)}</small></div>
-        <div class="kpi"><small>Checks</small><b>${fails.length} failed</b><small>${warns.length} need a look, ${pend.length} waiting. ${esc(ev.photos)}; ${esc(ev.visit.toLowerCase())}; ${esc(ev.pages)}.</small></div>
+        <div class="kpi"><small>${dec&&dec.amount!==""&&dec.amount!=null?"Recommended approval":"Amount questioned"}</small><b>${inr(dec&&dec.amount!==""&&dec.amount!=null?dec.amount:aq.amt)}</b><small>${dec&&dec.amount!==""&&dec.amount!=null?`Reduces the claim by ${inr(c.claimAmount-dec.amount)}`:esc(aq.why)}</small></div>
+        <div class="kpi"><small>Checks</small><b>${fails.length} failed</b><small>${warns.length} need a look, ${pend.length} waiting. ${esc(ev.photos)}; ${esc(ev.visit.toLowerCase())}.</small></div>
       </div>
     </div>
 
-    <section><h2>Key findings</h2>${kf?`<ol class="kf">${kf}</ol>`:`<p>No problems found in the checks completed so far.</p>`}
-      ${pend.length?`<p class="hint" style="margin-top:8px">${pend.length} check${pend.length>1?"s are":" is"} still waiting on evidence (section 5), so this picture may change.</p>`:""}</section>
+    <section><h2>1. Visit details</h2><div class="tablewrap"><table class="kv"><tbody>
+      <tr><th scope="row">Hospital</th><td>${esc(c.hospital)}</td><th scope="row">Type</th><td>${f?esc(f.hospType||"Not recorded"):"Not recorded"}</td></tr>
+      <tr><th scope="row">Date of visit</th><td>${f&&f.date?day(f.date):"Not visited yet"}</td><th scope="row">Response from hospital</th><td>${f?esc(f.response||"Not recorded"):"Not recorded"}</td></tr>
+      <tr><th scope="row">Trigger</th><td colspan="3">${triggers.length?esc([...new Set(triggers)].join("; ")):"Routine sample"}</td></tr>
+      <tr><th scope="row">Patients found vs shown admitted in TMS</th><td colspan="3">${f&&f.tms!==""&&f.tms!=null?`${esc(f.found)} found of ${esc(f.tms)} shown in TMS${Number(f.found)<Number(f.tms)?` <b class="tf">(${Number(f.tms)-Number(f.found)} missing)</b>`:""}`:"Not recorded"}</td></tr>
+    </tbody></table></div></section>
 
-    <section><h2>1. Case details</h2><div class="tablewrap"><table class="kv"><tbody>${kv.map(r=>`<tr><th scope="row">${r[0]}</th><td>${esc(r[1])}</td><th scope="row">${r[2]}</th><td>${esc(r[3])}</td></tr>`).join("")}</tbody></table></div></section>
+    <section><h2>2. Infrastructure and quality of care</h2>
+      ${secObs("Infrastructure",f&&f.beds?` Beds: ${[["general ward",f.beds.general],["ICU",f.beds.icu],["HDU",f.beds.hdu]].filter(([,x])=>x!==""&&x!=null).map(([l,x])=>`${x} ${l}`).join(", ")||"not recorded"}; ${f.ots!==""&&f.ots!=null?`${f.ots} OT${Number(f.ots)===1?"":"s"}`:"OTs not recorded"}.`:"")}
+      ${hospPh.length?`<p class="hint">Photos: ${hospPh.map(p=>`P${ph.indexOf(p)+1}`).join(", ")} (Annexure F).</p>`:""}</section>
 
-    <section><h2>2. Checks performed</h2>
-      <p class="hint" style="margin-bottom:8px">${st.checks.length} checks: ${st.checks.filter(k=>k.status==="pass").length} passed, ${warns.length} need a look, ${fails.length} failed, ${pend.length} waiting on evidence.</p>
+    <section><h2>3. Human resource</h2>${secObs("Human resource",m.spec?` Treating doctor’s specialisation: ${esc(m.spec)}.`:"")}</section>
+
+    <section><h2>4. Documentation</h2>${secObs("Medical documentation")}
+      <p>${mafDone(c)?(()=>{const no=mafItems(c).filter(i=>!i.invert&&m[i.k]==="no");return no.length?`For this case: ${no.map(i=>esc(i.l.charAt(0).toLowerCase()+i.l.slice(1))).join("; ")}: <b class="tf">No</b>.`:"For this case, registers, case papers, charts and the discharge summary support the claim.";})():"Case records not checked yet (Annexure C)."}</p></section>
+
+    <section><h2>5. Specific case</h2><div class="tablewrap"><table class="kv"><tbody>
+      <tr><th scope="row">Name of beneficiary</th><td>${esc(c.patient.name)}, ${esc(c.patient.age)}, ${fmtVal("gender",c.patient.gender)}</td><th scope="row">PM-JAY ID</th><td>${esc(c.benId||"Not given")}</td></tr>
+      <tr><th scope="row">Case number</th><td>${esc(c.id)}</td><th scope="row">Masked Aadhaar</th><td>${c.patient.aadhaar?"xxxx xxxx "+esc(c.patient.aadhaar):"Not given"}</td></tr>
+      <tr><th scope="row">Date of admission</th><td>${day(c.dates.admit)}</td><th scope="row">Date of discharge</th><td>${day(c.dates.discharge)} (${n} night${n===1?"":"s"})</td></tr>
+      <tr><th scope="row">Package blocked</th><td>${esc(c.pkg.code)} ${esc(c.pkg.name)}</td><th scope="row">Amount claimed</th><td>${inr(c.claimAmount)}${c.pkg.rate?` (rate ${inr(c.pkg.rate)})`:""}</td></tr>
+      <tr><th scope="row">Diagnosis</th><td>${esc(c.diagnosis||"Not given")}</td><th scope="row">Treating doctor</th><td>${esc(c.doctor||"Not given")}</td></tr>
+      <tr><th scope="row">Findings</th><td colspan="3">${kf?`<ol class="kf">${kf}</ol>`:"No problems found in the checks completed so far."}</td></tr>
+    </tbody></table></div></section>
+
+    <section><h2>6. Key findings and observations</h2>
+      <p class="hint" style="margin-bottom:8px">${st.checks.length} checks: ${st.checks.filter(k=>k.status==="pass").length} passed, ${warns.length} need a look, ${fails.length} failed, ${pend.length} waiting on evidence. Each shows its basis.</p>
       <div class="tablewrap"><table class="ct"><thead><tr><th>#</th><th>Check</th><th>Result</th><th>What was found</th></tr></thead><tbody>
-      ${st.checks.map((k,i)=>`<tr><td>${i+1}</td><td><b>${esc(k.title)}</b><br><span class="hint">${esc(k.basis||k.group)}</span></td><td class="res ${RES[k.status][1]}">${RES[k.status][0]}</td><td>${checkText(k)}</td></tr>`).join("")}
-      </tbody></table></div></section>
+      ${st.checks.map((k,i)=>`<tr><td>${i+1}</td><td><b>${esc(k.title)}</b><br><span class="hint">${esc(k.basis||k.group)}</span></td><td class="res ${RES[k.status][1]}">${k.status==="fail"&&isCrit(k)?"Fraud signal":RES[k.status][0]}</td><td>${checkText(k)}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${pend.length?`<p style="margin-top:10px"><b>Outstanding evidence.</b> ${pend.map(k=>esc(OUTSTANDING[k.group]||k.detail)).join(" ")}</p>`:""}</section>
 
-    <section><h2>3. Hospital pages read</h2>${pages.length?pages.map(p=>{const r=readsOf(c.id)[p.id],rows=comparePage(c,p.slot,r.fields);
-      return `<p style="margin:10px 0 6px"><b>${esc(slotOf(p.slot).label)}</b> <span class="hint">· read by ${r.method==="ai"?"AI":"text recognition"}${r.corrected?", corrected by the auditor":""}</span></p>
-      <div class="tablewrap"><table><thead><tr><th>Detail</th><th>Claim</th><th>On the page</th><th>Result</th></tr></thead><tbody>
-      ${rows.map(x=>`<tr><th scope="row">${x.label}</th><td>${esc(fmtVal(x.k,x.claim))}</td><td>${esc(fmtVal(x.k,x.page)||"Not found")}</td><td class="res ${x.st==="pass"?"tp":x.st==="fail"?"tf":"tw"}"><b>${x.st==="pass"?"Matches":x.st==="fail"?"Differs":"Unclear"}</b>${x.note&&x.st!=="pass"?`<br><span class="hint">${esc(x.note)}</span>`:""}</td></tr>`).join("")}</tbody></table></div>`;}).join("")
-      :`<p>Not yet available. The admission register and case sheet have not been photographed.</p>`}</section>
-
-    <section><h2>4. Home visit</h2>${v.status==="done"?`<div class="tablewrap"><table class="kv"><tbody>
-      <tr><th scope="row">${q.admitted}</th><td>${v.admitted==="yes"?"Yes":"No"}</td></tr>
-      <tr><th scope="row">${q.stay}</th><td>${v.stay===""||v.stay==null?"Not answered":`${v.stay} day(s) (record shows ${n} night${n===1?"":"s"})`}</td></tr>
-      <tr><th scope="row">Money paid to the hospital</th><td>${Number(v.paid)>0?`<b class="tf">${inr(v.paid)}</b> (not allowed under a cashless scheme)`:"Nothing"}</td></tr>
-      <tr><th scope="row">${q.papers}</th><td>${v.papers==="yes"?"Yes":v.papers==="no"?"No":"Not asked"}</td></tr>
-      ${v.notes?`<tr><th scope="row">Auditor’s notes</th><td>${esc(v.notes)}</td></tr>`:""}
-      <tr><th scope="row">Consent for photos</th><td>${consentOf(c.id)?"Recorded":"Not recorded"}</td></tr></tbody></table></div>`
-      :`<p>Not done yet. The patient has not been visited at home.</p>`}</section>
-
-    ${pend.length?`<section><h2>5. Outstanding evidence</h2><ul>${pend.map(k=>`<li>${esc(OUTSTANDING[k.group]||k.detail)}</li>`).join("")}</ul>
-      <p class="hint">A final decision should wait until these are collected, unless the failed checks above are enough on their own.</p></section>`
-      :`<section><h2>5. Outstanding evidence</h2><p>None. All evidence has been collected.</p></section>`}
-
-    <section><h2>6. Photo evidence</h2>${ph.length?`<p class="hint" style="margin-bottom:8px">${ph.length} photo${ph.length>1?"s":""}, each stamped with time, location and auditor, and fingerprinted to detect reuse.</p>
-      <div class="rphotos">${ph.map((p,i)=>`<figure><img src="${esc(p.src)}" alt="${esc(slotOf(p.slot).label)}"><figcaption><b>P${i+1}. ${esc(slotOf(p.slot).label)}</b><br>${stampText(c,p)}<br>Fingerprint ${esc(String(p.hash).slice(0,10))}</figcaption></figure>`).join("")}</div>`
-      :`<p>No photos taken yet.</p>`}</section>
-
-    <section><h2>7. Decision</h2><div class="tablewrap"><table class="kv"><tbody>
+    <section><h2>7. Conclusion</h2><div class="tablewrap"><table class="kv"><tbody>
       <tr><th scope="row">Suggested by ClaimSure</th><td>${esc(sg.v)}. ${esc(sg.why)}</td></tr>
-      <tr><th scope="row">Auditor’s decision</th><td>${dec?`<b>${esc(dec.verdict)}</b>`:"Not recorded yet"}</td></tr>
-      ${dec?`<tr><th scope="row">Reason</th><td>${esc(dec.note||"Not given")}</td></tr><tr><th scope="row">Decided by</th><td>${esc(dec.by||"Auditor")} on ${day(String(dec.at||"").slice(0,10))}</td></tr>`:""}
+      <tr><th scope="row">Recommendation (SAFU action)</th><td>${dec?`<b>${esc(dec.verdict)}</b>`:"Not recorded yet"}</td></tr>
+      ${dec&&dec.amount!==""&&dec.amount!=null?`<tr><th scope="row">Recommended approval amount</th><td>${inr(dec.amount)} of ${inr(c.claimAmount)} claimed</td></tr>`:""}
       ${aq.amt?`<tr><th scope="row">Amount questioned</th><td>${inr(aq.amt)}. ${esc(aq.why)}.</td></tr>`:""}
+      ${dec?`<tr><th scope="row">Reason</th><td>${esc(dec.note||"Not given")}</td></tr><tr><th scope="row">Recommended by</th><td>${esc(dec.by||"Auditor")} on ${day(String(dec.at||"").slice(0,10))}</td></tr>`:""}
     </tbody></table></div></section>
 
     <section><h2>8. Sign-off</h2><div class="signs">
-      <div class="sigbox"><b>Medical auditor</b><div class="sigline"><span>Name</span><i>${dec?esc(dec.by||""):""}</i></div><div class="sigline"><span>Registration no.</span><i></i></div><div class="sigline"><span>Signature</span><i></i></div><div class="sigline"><span>Date</span><i></i></div></div>
+      <div class="sigbox"><b>Auditing doctor</b><div class="sigline"><span>Name</span><i>${dec?esc(dec.by||""):""}</i></div><div class="sigline"><span>Registration no.</span><i></i></div><div class="sigline"><span>Signature</span><i></i></div><div class="sigline"><span>Date</span><i></i></div></div>
       <div class="sigbox"><b>Reviewed by (audit manager)</b><div class="sigline"><span>Name</span><i></i></div><div class="sigline"><span>Designation</span><i></i></div><div class="sigline"><span>Signature</span><i></i></div><div class="sigline"><span>Date</span><i></i></div></div>
-    </div></section>
+    </div><p class="hint" style="margin-top:8px">NHA requires the report within 7 days of the visit, with supporting evidence and the hospital’s signed acknowledgement (the fact sheet undertaking, Annexure B).</p></section>
+
+    <section class="annex"><h2>Annexure A. Desk audit checklist (NHA Annexure 1.1)</h2>
+      <div class="tablewrap"><table class="kv"><tbody><tr><th scope="row">Case number</th><td>${esc(c.id)}</td><th scope="row">Package booked</th><td>${esc(c.pkg.name)} (${c.pkg.rate?inr(c.pkg.rate):"rate not given"})</td></tr>
+      <tr><th scope="row">Admission</th><td>${day(c.dates.admit)}</td><th scope="row">Discharge</th><td>${day(c.dates.discharge)}</td></tr></tbody></table></div>
+      <div class="tablewrap" style="margin-top:8px"><table class="ct"><thead><tr><th>#</th><th>Question</th><th>Answer</th><th>Remarks</th></tr></thead><tbody>
+      ${DESK_QS.map((q,i)=>`<tr><td>${i+1}</td><td>${esc(q.q)}</td><td class="res">${YN(dk[q.id])}</td><td>${esc((dk.remarks||{})[q.id]||"")}</td></tr>`).join("")}</tbody></table></div>
+      <p class="hint" style="margin-top:6px">${dk.by?`Desk audit by ${esc(dk.by)}${dk.at?` on ${day(String(dk.at).slice(0,10))}`:""}.`:"Desk auditor not recorded."}</p></section>
+
+    <section class="annex"><h2>Annexure B. Hospital fact sheet (NHA Annexure 2.1)</h2>
+      ${f?`<div class="tablewrap"><table class="kv"><tbody>
+        <tr><th scope="row">Name of hospital</th><td>${esc(c.hospital)}</td><th scope="row">Date of investigation</th><td>${day(f.date)}</td></tr>
+        <tr><th scope="row">Type of hospital</th><td>${esc(f.hospType||"")}</td><th scope="row">PM-JAY patients admitted</th><td>${esc(f.found)} found / ${esc(f.tms)} in TMS</td></tr></tbody></table></div>
+        <div class="tablewrap" style="margin-top:8px"><table class="at"><thead><tr><th>Item</th><th>Y/N</th></tr></thead><tbody>
+        ${FACT_ITEMS.map(([sec,it])=>`<tr><td colspan="2"><b>${sec}</b></td></tr>${it.map(([k,l])=>`<tr><td>${esc(l)}</td><td class="res">${YN(factAns(f,k))}</td></tr>`).join("")}`).join("")}
+        </tbody></table></div>
+        <p style="margin-top:8px"><b>Undertaking by hospital.</b> This is to certify that the information provided by us about ${esc(c.hospital)} is true to the best of our knowledge and is based on documentation and process followed in this hospital. We have not suppressed any information or fact. We understand that, if the information is found to be incorrect or based on suppression of facts, the hospital stands to forfeit its claims.</p>
+        <div class="signs"><div class="sigbox"><b>Authorised person from hospital (with seal)</b><div class="sigline"><span>Name</span><i>${esc(f.signatory||"")}</i></div><div class="sigline"><span>Signed</span><i>${f.undertaking==="yes"?"Yes":f.undertaking==="no"?"Refused":""}</i></div><div class="sigline"><span>Date</span><i>${f.undertaking==="yes"?day(f.date):""}</i></div></div>
+          <div class="sigbox"><b>Auditing doctor</b><div class="sigline"><span>Name</span><i>${esc(f.by||"")}</i></div><div class="sigline"><span>Signature</span><i></i></div><div class="sigline"><span>Date</span><i>${day(f.date)}</i></div></div></div>`
+        :`<p>Not filled yet.</p>`}</section>
+
+    <section class="annex"><h2>Annexure C. Medical audit form, case specific details (NHA Annexure 2.2, part E)</h2>
+      ${mafOf(c)?`<div class="tablewrap"><table class="at"><thead><tr><th>Item</th><th>Y/N</th></tr></thead><tbody>
+        <tr><td>Name of patient / package booked</td><td>${esc(c.patient.name)} / ${esc(c.pkg.name)}</td></tr>
+        <tr><td>Name and specialisation of treating doctor</td><td>${esc(c.doctor||"")}${m.spec?`, ${esc(m.spec)}`:""}</td></tr>
+        <tr><td>Type of treatment</td><td>${surg?"Surgical":"Medical"}</td></tr>
+        ${mafItems(c).map(i=>`<tr><td>${esc(i.l)}</td><td class="res">${i.invert?YNi(m[i.k]):YN(m[i.k])}</td></tr>`).join("")}
+        </tbody></table></div>`:`<p>Not filled yet.</p>`}</section>
+
+    <section class="annex"><h2>Annexure D. Home visit (NHA Annexure 4)</h2>
+      ${v.status==="done"?`<div class="tablewrap"><table class="at"><thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+        ${[["Has s/he availed services under AB PM-JAY?",YN(v.availed)],[`Treated at ${esc(shortHosp(c.hospital))}?`,v.sameHosp?YN(v.sameHosp)+(v.otherHosp?`: ${esc(v.otherHosp)}`:""):"Not asked"],
+          ["Presenting complaints at admission",esc(v.complaints||"Not recorded")+(v.since?` (since ${esc(v.since)})`:"")],["Referred from another hospital, clinic or doctor?",v.referred?YNi(v.referred)+(v.refFrom?`: ${esc(v.refFrom)}`:""):"Not asked"],
+          ["When admitted and discharged (patient’s account)",v.pAdmit||v.pDischarge?`${day(v.pAdmit)||"?"} to ${day(v.pDischarge)||"?"}`:v.stay!==""&&v.stay!=null?`${esc(v.stay)} day(s) (record shows ${n} night${n===1?"":"s"})`:"Not recorded"],
+          ["Treatment given",esc(v.treatment||"Not recorded")],["Was any surgery conducted?",v.surgery?YN(v.surgery):"Not asked"],["If yes, is there a scar on the body?",v.scar?YN(v.scar):"Not applicable"],
+          ["Free food and travel allowance provided?",v.food?YN(v.food):"Not asked"],["Post-hospitalisation medication provided?",v.postMeds?YN(v.postMeds):"Not asked"],
+          ["Was any money asked by the hospital?",v.moneyAsked==="yes"?`<b class="tf">Yes</b>${Number(v.amount)>0?`, ${inr(v.amount)}`:""}${v.purpose?`, for ${esc(v.purpose)}`:""}${v.receipts?`; receipts: ${v.receipts==="yes"?"yes":"no"}`:""}`:"No"],
+          ["Bought medicine or tests at own cost?",v.ownCost?YNi(v.ownCost):"Not asked"],["Discharge summary given?",YN(v.dischargeSummary)],
+          ["Consent for photos",consentOf(c.id)?"Recorded":"Not recorded"],["Other remarks",esc(v.notes||"None")]].map(([q,a])=>`<tr><td>${q}</td><td>${a}</td></tr>`).join("")}
+        </tbody></table></div>`:`<p>Not done yet.</p>`}</section>
+
+    <section class="annex"><h2>Annexure E. Hospital pages read by ClaimSure</h2>${pages.length?pages.map(p=>{const r=readsOf(c.id)[p.id],rows=comparePage(c,p.slot,r.fields);
+      return `<p style="margin:10px 0 6px"><b>${esc(slotOf(p.slot).label)}</b> <span class="hint">· read by ${r.method==="ai"?"AI":"text recognition"}${r.corrected?", corrected by the auditor":""}</span></p>
+      <div class="tablewrap"><table><thead><tr><th>Detail</th><th>Claim</th><th>On the page</th><th>Result</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><th scope="row">${x.label}</th><td>${esc(fmtVal(x.k,x.claim))}</td><td>${esc(fmtVal(x.k,x.page)||"Not found")}</td><td class="res ${x.st==="pass"?"tp":x.st==="fail"?"tf":"tw"}"><b>${x.st==="pass"?"Matches":x.st==="fail"?"Differs":"Unclear"}</b>${x.note&&x.st!=="pass"?`<br><span class="hint">${esc(x.note)}</span>`:""}</td></tr>`).join("")}</tbody></table></div>`;}).join("")
+      :`<p>No pages read yet.</p>`}</section>
+
+    <section class="annex"><h2>Annexure F. Photo evidence</h2>${ph.length?`<p class="hint" style="margin-bottom:8px">${ph.length} photo${ph.length>1?"s":""}, each stamped with time, location and auditor, and fingerprinted to detect reuse. Patient photos taken only with consent.</p>
+      <div class="rphotos">${ph.map((p,i)=>`<figure><img src="${esc(p.src)}" alt="${esc(slotOf(p.slot).label)}"><figcaption><b>P${i+1}. ${esc(slotOf(p.slot).label)}</b><br>${stampText(c,p)}<br>Fingerprint ${esc(String(p.hash).slice(0,10))}</figcaption></figure>`).join("")}</div>`
+      :`<p>No photos taken yet.</p>`}</section>
 
     <section class="annex"><h2>About this report</h2>
-      <p><b>How the risk score works.</b> Each failed check adds 30 points, or 50 for fraud signals (patient denies treatment, reused images, edited files, identity mismatch, hospital pages that contradict the claim, the same patient claimed in two places at once, running-serial bills). Each item that needs a look adds 12. The score is capped at 100: 50 or more is high risk, 20 to 49 medium, under 20 low.</p>
-      <p><b>Basis.</b> Each check shows where its rule comes from: NHA’s anti-fraud guidelines and audit manual, the client’s scheme rules, or ClaimSure’s own document checks. Checks across claims (same patient in two places, repeat claims) only see the cases loaded into ClaimSure.</p>
-      <p><b>Who decides.</b> ClaimSure flags problems and suggests an action. A qualified medical auditor reviews the evidence and makes every decision.</p>
-      <p><b>Evidence handling.</b> Photos are stamped with time, the auditor’s location and name, and fingerprinted (SHA-256) so reused images are detected. Hospital pages are read automatically and can be corrected by the auditor; corrections are marked in section 3. Only masked Aadhaar numbers are recorded.</p>
-      <p><b>Scheme rules.</b> This case was checked with ${esc(rulesText(clientOf(c)))} rules, set by the client, ${esc(clientOf(c).name)}.</p>
+      <p><b>Format.</b> Sections 1 to 7 follow NHA’s Medical Audit Report format (Field Investigation and Medical Audit Manual, April 2020, Annexure 2.3). Annexures A to D are NHA’s Desk Audit Checklist (1.1), Fact Sheet (2.1), Medical Audit Form case section (2.2) and Home Visit Format (4). Recommendations use the SAFU portal’s actions.</p>
+      <p><b>How the risk score works.</b> Each failed check adds 30 points, or 50 for a fraud signal (patient denies treatment, reused images, edited files, identity mismatch, no register entry for the patient, fewer patients found than shown in TMS, the same patient claimed in two places, running-serial bills). Each item that needs a look adds 12, capped at 100.</p>
+      <p><b>Basis.</b> Each check shows where its rule comes from: NHA’s anti-fraud guidelines and audit manual, the client’s scheme rules (${esc(rulesText(cl))}), or ClaimSure’s own document checks. Checks across claims only see the cases loaded into ClaimSure.</p>
+      <p><b>Who decides.</b> ClaimSure flags problems and suggests an action. A qualified medical auditor reviews the evidence and makes every recommendation; the SHA’s anti-fraud officer takes the final action.</p>
       <p><b>Demo notice.</b> This report was produced from made-up sample data. Package rates are illustrative, not official.</p>
     </section>
     <p class="dfoot">Confidential: contains patient health information. Share only with authorised staff of the scheme, insurer or audit agency.</p>
@@ -1488,8 +1764,10 @@ async function addSamples(c,part){
 }
 function saveDecision(c,openNext){
   const v=(document.querySelector('input[name="verdict"]:checked')||{}).value,note=document.getElementById("dnote").value.trim();
-  if(!v){toast("Choose a decision first.",true);return;}
-  setCase(c.id,{decision:{verdict:v,note,by:ME?ME.name:"Auditor",at:new Date().toISOString()}});
+  if(!v){toast("Choose a recommendation first.",true);return;}
+  const amtRaw=document.getElementById("damt").value,amount=amtRaw===""?"":Number(amtRaw);
+  if(v==="Process with partial amount"&&(amount===""||amount<0||amount>c.claimAmount)){toast(`Enter a recommended approval amount between ₹0 and ${inr(c.claimAmount)}.`,true);return;}
+  setCase(c.id,{decision:{verdict:v,note,amount:v==="Process with partial amount"?amount:"",by:ME?ME.name:"Auditor",at:new Date().toISOString()}});
   computeAll();renderTop();renderFilters();
   toast(`Decision saved: ${v}.`);
   if(openNext){const nx=nextCase(c);if(nx){UI.tab="review";location.hash=nx.id;return;}}
@@ -1512,20 +1790,42 @@ document.addEventListener("click",async e=>{
   if(d.open){location.hash=d.open;return;}
   if(d.tab){UI.tab=d.tab;UI.editing=null;renderCase();window.scrollTo({top:0});return;}
   if(d.part){UI.part=d.part;renderCase();return;}
-  if(d.lang){UI.lang=d.lang;renderCase();return;}
+  if(d.lang){const fm=document.getElementById("visitForm");
+    if(fm&&c){const fd=new FormData(fm),dr={};VISIT_KEYS.forEach(k=>{const x=fd.get(k);if(x!=null&&x!=="")dr[k]=x;});UI.draft={id:c.id,v:dr};}
+    UI.lang=d.lang;renderCase();return;}
   if(!c&&d.act!=="home")return;
   if(d.act==="home"){location.hash="";return;}
-  if(d.act==="field"||d.act==="decide"){UI.tab=d.act;if(d.act==="field")UI.part=(missingSlots(c).some(s=>s.visit==="hospital")||missingRules(c).length)?"hospital":"home";renderCase();window.scrollTo({top:0});return;}
+  if(d.act==="docs"){UI.tab="docs";renderCase();setTimeout(()=>{const el=document.getElementById("deskform");if(el)el.scrollIntoView({block:"start"});},30);return;}
+  if(d.act==="field"||d.act==="decide"){UI.tab=d.act;if(d.act==="field")UI.part=(missingSlots(c).some(s=>s.visit==="hospital")||missingRules(c).length||!factOf(c)||!mafDone(c))?"hospital":"home";renderCase();window.scrollTo({top:0});return;}
   if(d.act==="next"){const nx=nextCase(c);if(nx){UI.tab="review";location.hash=nx.id;}return;}
   if(d.act==="print"){window.print();return;}
   if(d.act==="savedec"){saveDecision(c,false);return;}
   if(d.act==="savenext"){saveDecision(c,true);return;}
   if(d.act==="savevisit"){
     const fd=new FormData(document.getElementById("visitForm"));
-    if(!fd.get("admitted")){toast("Answer the first question to save.",true);return;}
-    setCase(c.id,{visit:{status:"done",admitted:fd.get("admitted"),stay:fd.get("stay")===""?"":Number(fd.get("stay")),paid:Number(fd.get("paid")||0),papers:fd.get("papers")||"",notes:fd.get("notes")||""}});
-    renderAll();toast("Answers saved. Risk updated.");return;}
-  if(d.act==="resetvisit"){if(saved[c.id]){delete saved[c.id].visit;persist();}renderAll();toast("Reset to the sample answers.");return;}
+    if(!fd.get("availed")){toast("Answer the first question to save.",true);return;}
+    const v={status:"done",form:"nha-annex4"};["availed","sameHosp","otherHosp","complaints","since","referred","refFrom","pAdmit","pDischarge","treatment","surgery","scar","food","postMeds","moneyAsked","purpose","receipts","ownCost","ownReceipt","dischargeSummary","notes"].forEach(k=>v[k]=String(fd.get(k)||"").trim());
+    v.amount=Number(fd.get("amount")||0);
+    UI.draft=null;setCase(c.id,{visit:v});renderAll();toast("Answers saved. Risk updated.");return;}
+  if(d.act==="savedesk"||d.act==="desksuggest"){
+    const fd=new FormData(document.getElementById("deskForm")),sg=deskSuggest(c),prev=deskOf(c)||{},dk={remarks:{}};
+    DESK_QS.forEach(q=>{dk[q.id]=fd.get("d-"+q.id)||"";dk.remarks[q.id]=String(fd.get("r-"+q.id)||"").trim();
+      if(d.act==="desksuggest"&&!dk[q.id]&&sg[q.id]){dk[q.id]=sg[q.id].a;if(!dk.remarks[q.id])dk.remarks[q.id]=sg[q.id].why;}});
+    dk.by=ME?ME.name:(prev.by||"Desk doctor");dk.at=new Date().toISOString();
+    setCase(c.id,{desk:dk});renderAll();
+    toast(d.act==="desksuggest"?"ClaimSure’s answers filled in. Answer the rest.":deskDone(c)?"Desk audit saved.":"Saved. Some questions are still unanswered.");return;}
+  if(d.act==="savefact"){
+    const fd=new FormData(document.getElementById("factForm")),n=k=>fd.get(k)===""?"":Number(fd.get(k)),a={};
+    FACT_ITEMS.forEach(([,it])=>it.forEach(([k])=>{a[k]=fd.get("f-"+k)||"";}));
+    if(Object.values(a).some(x=>!x)){toast("Answer every Yes/No item on the fact sheet.",true);return;}
+    const fact={date:fd.get("date"),hospType:fd.get("hospType"),response:fd.get("response"),tms:n("tms"),found:n("found"),beds:{general:n("bedsGeneral"),icu:n("bedsIcu"),hdu:n("bedsHdu")},ots:n("ots"),otTables:n("otTables"),
+      undertaking:fd.get("undertaking")||"",signatory:String(fd.get("signatory")||"").trim(),a,by:ME?ME.name:"Field auditor",at:new Date().toISOString()};
+    setCase("hosp:"+c.hospital,{fact});renderAll();toast(`Fact sheet saved for ${shortHosp(c.hospital)}. It applies to every case there.`);return;}
+  if(d.act==="savemaf"){
+    const fd=new FormData(document.getElementById("mafForm")),m={spec:String(fd.get("spec")||"").trim()};
+    MAF_ITEMS.forEach(i=>{m[i.k]=fd.get("m-"+i.k)||"";});
+    setCase(c.id,{maf:m});renderAll();toast(mafDone(c)?"Case records saved.":"Saved. Some items are still unanswered.");return;}
+  if(d.act==="resetvisit"){UI.draft=null;if(saved[c.id]){delete saved[c.id].visit;persist();}renderAll();toast("Reset to the sample answers.");return;}
   if(d.sample){b.disabled=true;await addSamples(c,d.sample);return;}
   if(d.read){const p=PHOTOS.find(x=>x.id===d.read);if(p)readPhoto(c,p);return;}
   if(d.fixedit){UI.editing=d.fixedit;renderCase();return;}

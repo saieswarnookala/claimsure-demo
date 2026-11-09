@@ -100,3 +100,13 @@ Besides ClaimSure's own document checks, every case runs checks based on NHA's a
 - Case sheet records complaints and history (answered on the hospital visit)
 
 Checks across claims only see the cases loaded into ClaimSure. Optional import columns: Beneficiary ID, Family ID, Biometric at admission, Biometric at discharge.
+
+## NHA formats
+
+The audit follows NHA's Field Investigation and Medical Audit Manual (April 2020):
+
+- Desk audit: NHA Desk Audit Checklist (Annexure 1.1). New cases start here. ClaimSure pre-answers the 5 questions it can verify (documents, package fit, length of stay, discharge summary); the desk doctor answers the rest.
+- Hospital visit: NHA Fact Sheet (Annexure 2.1), filled once per hospital and shared by every case there, signed by the hospital; and the Medical Audit Form case section (Annexure 2.2, part E).
+- Home visit: NHA Home Visit Format (Annexure 4), in English and Telugu.
+- Report: NHA Medical Audit Report format (Annexure 2.3), with the forms attached as Annexures A to D.
+- Recommendations use the SAFU portal's actions: Dismiss (non-fraud), Process with partial amount (with a recommended approval amount), Confirm fraud and reject, Send for field investigation.
